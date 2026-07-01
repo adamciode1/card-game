@@ -367,6 +367,23 @@ const DEFAULT_SETTINGS = {
 };
 const SETTINGS_STORAGE_KEY = 'astral-gambit-settings';
 
+const TUTORIAL_STEPS = [
+  'Play cards with spark: attacks damage enemies, skills create block, and tactics keep turns moving.',
+  'Watch enemy intent before ending your turn; block heavy attacks and use setup turns to mark or arm gambits.',
+  'After each non-final victory, choose one card reward, open the map, and keep the mini-run route short and readable.',
+];
+
+const RELEASE_CHECKLIST = [
+  'Playable from main menu through victory or defeat.',
+  'Tutorial, shortcuts, glossary, settings, and credits are visible in-game.',
+  'Known issues are listed before sharing the prototype externally.',
+];
+
+const KNOWN_ISSUES = [
+  'Audio is represented by a saved volume preference only; final sound assets are not included yet.',
+  'Balance targets are still based on local repeated-run notes and need external player feedback.',
+];
+
 const app = document.querySelector('#app');
 let state = createGame();
 window.addEventListener('keydown', handleKeyboardShortcuts);
@@ -378,6 +395,7 @@ function createGame() {
   );
 
   const initialState = {
+    screen: 'menu',
     phase: 'player',
     turn: 1,
     player: { hp: 52, maxHp: 52, block: 0, energy: 3, maxEnergy: 3, status: { marked: 0 } },
@@ -397,6 +415,8 @@ function createGame() {
     rewardsClaimed: [],
     settings: loadSettings(),
     settingsOpen: false,
+    tutorialOpen: true,
+    creditsOpen: false,
   };
 
   drawCards(initialState, 5);
@@ -617,16 +637,23 @@ function rollRewardOptions(state) {
 }
 
 function render() {
-  const intent = currentIntent(state);
   applySettings();
+  if (state.screen === 'menu') {
+    renderMainMenu();
+    return;
+  }
+  const intent = currentIntent(state);
   app.innerHTML = `
     <section class="hero-panel">
       <div>
-        <p class="eyebrow">Session 9 Balance + Playtesting</p>
+        <p class="eyebrow">Session 10 Release Candidate</p>
         <h1>Astral Gambit</h1>
-        <p class="subtitle">A readable mini-run card battler with lightweight balance targets, playtest notes, and clear choices.</p>
+        <p class="subtitle">A polished mini-run card battler with onboarding, route choices, rewards, and a share-ready checklist.</p>
       </div>
       <div class="controls">
+        <button class="secondary" data-action="back-menu">Main Menu</button>
+        <button class="secondary" data-action="toggle-tutorial" aria-expanded="${state.tutorialOpen}">Tutorial</button>
+        <button class="secondary" data-action="toggle-credits" aria-expanded="${state.creditsOpen}">Credits</button>
         <button class="secondary" data-action="toggle-settings" aria-expanded="${state.settingsOpen}">Settings</button>
         <button class="secondary" data-action="debug-draw" title="Debug tool: draw 1 card. Keyboard: D">Debug Draw</button>
         <button class="secondary" data-action="debug-energy" title="Debug tool: gain 1 spark. Keyboard: S">+1 Spark</button>
@@ -635,6 +662,8 @@ function render() {
     </section>
 
     ${settingsTemplate()}
+    ${tutorialTemplate()}
+    ${creditsTemplate()}
 
     <section class="battlefield">
       ${combatantTemplate('Player', state.player.hp, state.player.maxHp, state.player.block, `${state.player.energy}/${state.player.maxEnergy} spark`, 'player-card', '✦', playerStatusTemplate())}
@@ -673,6 +702,8 @@ function render() {
 
     ${balanceNotesTemplate()}
 
+    ${releaseNotesTemplate()}
+
     <section class="log-panel">
       <h2>Combat Log</h2>
       <ol>${state.log.map((entry) => `<li>${entry}</li>`).join('')}</ol>
@@ -685,6 +716,19 @@ function render() {
   app.querySelector('[data-action="end-turn"]')?.addEventListener('click', endTurn);
   app.querySelector('[data-action="restart"]')?.addEventListener('click', () => {
     state = createGame();
+    state.screen = 'game';
+    render();
+  });
+  app.querySelector('[data-action="back-menu"]')?.addEventListener('click', () => {
+    state.screen = 'menu';
+    render();
+  });
+  app.querySelector('[data-action="toggle-tutorial"]')?.addEventListener('click', () => {
+    state.tutorialOpen = !state.tutorialOpen;
+    render();
+  });
+  app.querySelector('[data-action="toggle-credits"]')?.addEventListener('click', () => {
+    state.creditsOpen = !state.creditsOpen;
     render();
   });
   app.querySelector('[data-action="toggle-settings"]')?.addEventListener('click', () => {
@@ -745,6 +789,12 @@ function toggleFullscreen() {
 
 function handleKeyboardShortcuts(event) {
   if (event.target instanceof HTMLInputElement) return;
+  if (state.screen === 'menu') {
+    if (event.key === 'Enter') {
+      startRun();
+    }
+    return;
+  }
   if (event.key >= '1' && event.key <= '5') {
     playHandIndex(Number(event.key) - 1);
   } else if (event.code === 'Space') {
@@ -761,6 +811,50 @@ function handleKeyboardShortcuts(event) {
     state.message = 'Debug tool added 1 spark.';
     render();
   }
+}
+
+function renderMainMenu() {
+  app.innerHTML = `
+    <main class="main-menu" aria-label="Main menu">
+      <section class="menu-card">
+        <p class="eyebrow">Release Candidate</p>
+        <h1>Astral Gambit</h1>
+        <p class="subtitle">A short, readable card-battler run built around marked burst turns, defensive timing, and delayed gambits.</p>
+        <div class="menu-actions">
+          <button class="end-turn" data-action="start-run">Start Run</button>
+          <button class="secondary menu-button" data-action="menu-tutorial">How to Play</button>
+          <button class="secondary menu-button" data-action="menu-credits">Credits</button>
+        </div>
+      </section>
+      <section class="onboarding-panel">
+        <div>
+          <p class="eyebrow">Quick Tutorial</p>
+          <ol>${TUTORIAL_STEPS.map((step) => `<li>${step}</li>`).join('')}</ol>
+        </div>
+        <div>
+          <p class="eyebrow">Release Notes</p>
+          <ul>${RELEASE_CHECKLIST.map((item) => `<li>${item}</li>`).join('')}</ul>
+        </div>
+      </section>
+    </main>
+  `;
+  app.querySelector('[data-action="start-run"]')?.addEventListener('click', startRun);
+  app.querySelector('[data-action="menu-tutorial"]')?.addEventListener('click', () => {
+    state.screen = 'game';
+    state.tutorialOpen = true;
+    render();
+  });
+  app.querySelector('[data-action="menu-credits"]')?.addEventListener('click', () => {
+    state.screen = 'game';
+    state.creditsOpen = true;
+    render();
+  });
+}
+
+function startRun() {
+  state = createGame();
+  state.screen = 'game';
+  render();
 }
 
 function settingsTemplate() {
@@ -784,6 +878,51 @@ function settingsTemplate() {
         <strong>${state.settings.volume}%</strong>
       </label>
       <button class="end-turn" data-action="toggle-fullscreen">Toggle Fullscreen</button>
+    </section>
+  `;
+}
+
+function tutorialTemplate() {
+  if (!state.tutorialOpen) return '';
+  return `
+    <section class="onboarding-panel" aria-label="Tutorial">
+      <div>
+        <p class="eyebrow">How to play</p>
+        <h2>Three-step onboarding</h2>
+      </div>
+      <ol>${TUTORIAL_STEPS.map((step) => `<li>${step}</li>`).join('')}</ol>
+    </section>
+  `;
+}
+
+function creditsTemplate() {
+  if (!state.creditsOpen) return '';
+  return `
+    <section class="credits-panel" aria-label="Credits">
+      <div>
+        <p class="eyebrow">Credits</p>
+        <h2>Prototype team</h2>
+      </div>
+      <p>Design, code, and presentation pass by the Astral Gambit prototype team. Built with Vite and vanilla JavaScript.</p>
+    </section>
+  `;
+}
+
+function releaseNotesTemplate() {
+  return `
+    <section class="release-panel" aria-label="Release checklist and known issues">
+      <div>
+        <p class="eyebrow">Release candidate</p>
+        <h2>Checklist + known issues</h2>
+      </div>
+      <div>
+        <strong>Checklist</strong>
+        <ul>${RELEASE_CHECKLIST.map((item) => `<li>${item}</li>`).join('')}</ul>
+      </div>
+      <div>
+        <strong>Known issues</strong>
+        <ul>${KNOWN_ISSUES.map((item) => `<li>${item}</li>`).join('')}</ul>
+      </div>
     </section>
   `;
 }
