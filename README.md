@@ -1,6 +1,6 @@
 # Astral Gambit Prototype
 
-A small browser-based card game prototype currently focused on Session 9 of the development plan. The build keeps the playable mini-run intact while adding lightweight balance targets and playtest tracking before any more systems are added.
+A small browser-based card game prototype currently focused on Session 10 of the development plan. The build keeps the playable mini-run intact while adding release-candidate presentation: a main menu, lightweight onboarding, credits, and a share-ready checklist with known issues.
 
 ## Run locally
 
@@ -9,7 +9,7 @@ npm install
 npm start
 ```
 
-Open the local Vite URL shown in the terminal.
+Open the local Vite URL shown in the terminal, then choose **Start Run** from the main menu.
 
 ## Prototype controls
 
@@ -18,7 +18,7 @@ Open the local Vite URL shown in the terminal.
 - Press **Space** to end turn, **M** to open the map after claiming rewards, **D** to debug draw, and **S** to add spark.
 - Click **End Turn** to discard your hand and let the enemy act.
 - After a victory, choose a card reward, click **Open Map**, then pick the next route node.
-- Open **Settings** to adjust fullscreen, animation speed, text readability, and volume preference.
+- Use the **Tutorial**, **Credits**, and **Settings** controls for onboarding, attribution, fullscreen, animation speed, text readability, and volume preference.
 - Use **Debug Draw** and **+1 Spark** to quickly test card draw and energy states.
 - Click **Restart Run** after victory, defeat, or whenever you want a fresh sequence.
 
@@ -46,11 +46,18 @@ Open the local Vite URL shown in the terminal.
 - The mini-run map starts with an opening fight, then offers a safe combat or elite combat branch, one utility choice, and a final boss.
 - Utility nodes stay lightweight: rest heals HP, upgrade grants +1 max spark, and event adds a random reward card.
 
+## Current presentation and release candidate
+
+- The prototype now opens on a main menu with Start Run, How to Play, and Credits actions.
+- A compact tutorial explains spark, enemy intent, rewards, and route flow without adding a separate campaign layer.
+- The in-game release panel lists the release checklist and known issues for external feedback builds.
+- Known issues for this candidate: audio is represented by a saved volume preference only, and balance still needs external player feedback.
+
 ## Current balance and playtesting
 
 - A lightweight `BALANCE_LOG.md` records balance targets, playtest observations, and the next repeated-run checklist.
 - The in-game balance panel keeps target outcomes visible while testing the current route.
-- Session 9 intentionally avoids adding more keywords, encounters, or large systems until repeated runs identify clear tuning needs.
+- Session 10 preserves the Session 9 balance scope and avoids adding new combat keywords, encounters, or large systems before external feedback.
 
 ## Current polish, accessibility, and usability
 
@@ -58,7 +65,7 @@ Open the local Vite URL shown in the terminal.
 - Keyboard shortcuts support quick mouse-and-keyboard PC play without changing the core rules.
 - Attack cards show a simple HP damage preview that accounts for enemy block and marked bonus.
 - Card, status, and glossary tooltips explain the core terms directly in the interface.
-- A shortcut strip and quick glossary keep new-player guidance visible without adding a full tutorial system yet.
+- A shortcut strip, quick glossary, and compact tutorial keep new-player guidance visible without expanding the ruleset.
 
 ## Current mini-run route
 
