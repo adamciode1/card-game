@@ -1,4 +1,5 @@
 import './styles.css';
+import astralAssetsUrl from './assets/astral-assets.svg';
 
 const CARD_LIBRARY = [
   {
@@ -277,6 +278,7 @@ const ENCOUNTERS = [
     name: 'Ember Wolf',
     archetype: 'Attacker / Disruptor',
     portrait: '🐺',
+    assetId: 'enemy-wolf',
     maxHp: 56,
     intro: 'The Ember Wolf teaches intent timing: block heavy bites and punish setup turns.',
     mechanics: 'Marks you before bite turns; gains strength if left unchecked.',
@@ -292,6 +294,7 @@ const ENCOUNTERS = [
     name: 'Aegis Moth',
     archetype: 'Defender',
     portrait: '🦋',
+    assetId: 'enemy-moth',
     maxHp: 64,
     intro: 'The Aegis Moth rewards saving burst damage for turns after its shell drops.',
     mechanics: 'Alternates large block turns with modest attacks and a cleansing molt.',
@@ -307,6 +310,7 @@ const ENCOUNTERS = [
     name: 'Hollow Oracle',
     archetype: 'Summoner / Scaler',
     portrait: '🜁',
+    assetId: 'enemy-oracle',
     maxHp: 70,
     intro: 'The Hollow Oracle pressures slow hands with orbiting wisps that grow its offense.',
     mechanics: 'Summons wisps; each wisp adds chip damage and empowers Starfall.',
@@ -322,6 +326,7 @@ const ENCOUNTERS = [
     name: 'Solar Tyrant',
     archetype: 'Boss Pattern',
     portrait: '☀',
+    assetId: 'enemy-tyrant',
     maxHp: 88,
     intro: 'The Solar Tyrant is a compact boss test with a readable three-turn burst cycle.',
     mechanics: 'Builds strength, shields before a flare, then unleashes a large attack.',
@@ -415,7 +420,7 @@ function createGame() {
     rewardsClaimed: [],
     settings: loadSettings(),
     settingsOpen: false,
-    tutorialOpen: true,
+    tutorialOpen: false,
     creditsOpen: false,
   };
 
@@ -644,20 +649,13 @@ function render() {
   }
   const intent = currentIntent(state);
   app.innerHTML = `
-    <section class="hero-panel">
-      <div>
-        <p class="eyebrow">Session 10 Release Candidate</p>
-        <h1>Astral Gambit</h1>
-        <p class="subtitle">A polished mini-run card battler with onboarding, route choices, rewards, and a share-ready checklist.</p>
-      </div>
-      <div class="controls">
-        <button class="secondary" data-action="back-menu">Main Menu</button>
-        <button class="secondary" data-action="toggle-tutorial" aria-expanded="${state.tutorialOpen}">Tutorial</button>
-        <button class="secondary" data-action="toggle-credits" aria-expanded="${state.creditsOpen}">Credits</button>
+    <section class="game-hud">
+      <div class="brand-lockup"><strong>Astral Gambit</strong><span>${runStepLabel()} · Turn ${state.turn}</span></div>
+      <div class="controls compact">
+        <button class="secondary" data-action="back-menu">Menu</button>
+        <button class="secondary" data-action="toggle-tutorial" aria-expanded="${state.tutorialOpen}">Help</button>
         <button class="secondary" data-action="toggle-settings" aria-expanded="${state.settingsOpen}">Settings</button>
-        <button class="secondary" data-action="debug-draw" title="Debug tool: draw 1 card. Keyboard: D">Debug Draw</button>
-        <button class="secondary" data-action="debug-energy" title="Debug tool: gain 1 spark. Keyboard: S">+1 Spark</button>
-        <button data-action="restart">Restart Run</button>
+        <button data-action="restart">Restart</button>
       </div>
     </section>
 
@@ -665,48 +663,32 @@ function render() {
     ${tutorialTemplate()}
     ${creditsTemplate()}
 
-    <section class="battlefield">
-      ${combatantTemplate('Player', state.player.hp, state.player.maxHp, state.player.block, `${state.player.energy}/${state.player.maxEnergy} spark`, 'player-card', '✦', playerStatusTemplate())}
-      <div class="turn-panel">
-        <p class="eyebrow">${runStepLabel()} · Turn ${state.turn}</p>
-        <h2>${state.message}</h2>
-        ${intentTemplate(intent)}
-        ${gambitTemplate()}
-        ${mapTemplate()}
+    <main class="play-layout">
+      <section class="battlefield">
+        ${combatantTemplate('Player', state.player.hp, state.player.maxHp, state.player.block, `${state.player.energy}/${state.player.maxEnergy} spark`, 'player-card', 'hero-mage', playerStatusTemplate())}
+        <div class="turn-panel">
+          <p class="eyebrow">Current plan</p>
+          <h2>${state.message}</h2>
+          ${intentTemplate(intent)}
+          ${gambitTemplate()}
+          ${mapTemplate()}
+          ${rewardTemplate()}
+          ${resultActionTemplate()}
+        </div>
+        ${combatantTemplate(state.enemy.name, state.enemy.hp, state.enemy.maxHp, state.enemy.block, state.enemy.archetype, 'enemy-card', state.enemy.assetId, enemyStatusTemplate())}
+      </section>
+
+      <aside class="side-panel" aria-label="Run information">
+        <section class="zones">${zoneTemplate('Draw', state.deck.length)}${zoneTemplate('Discard', state.discard.length)}${zoneTemplate('Exhaust', state.exhaust.length)}</section>
         ${progressionTemplate()}
-        ${rewardTemplate()}
-        ${resultActionTemplate()}
-      </div>
-      ${combatantTemplate(state.enemy.name, state.enemy.hp, state.enemy.maxHp, state.enemy.block, state.enemy.archetype, 'enemy-card', state.enemy.portrait, enemyStatusTemplate())}
-    </section>
+        ${glossaryTemplate()}
+        <section class="log-panel"><h2>Latest actions</h2><ol>${state.log.slice(0, 5).map((entry) => `<li>${entry}</li>`).join('')}</ol></section>
+      </aside>
+    </main>
 
-    <section class="zones">
-      ${zoneTemplate('Draw', state.deck.length)}
-      ${zoneTemplate('Discard', state.discard.length)}
-      ${zoneTemplate('Exhaust', state.exhaust.length)}
-    </section>
-
-    <section class="shortcut-strip" aria-label="Keyboard shortcuts">
-      <span>1-5 play cards</span>
-      <span>Space end turn</span>
-      <span>M open map</span>
-      <span>D draw</span>
-      <span>S spark</span>
-    </section>
-
-    <section class="hand" aria-label="Player hand">
-      ${state.hand.map(cardTemplate).join('') || '<p class="empty-hand">No cards in hand.</p>'}
-    </section>
-
-    ${glossaryTemplate()}
-
-    ${balanceNotesTemplate()}
-
-    ${releaseNotesTemplate()}
-
-    <section class="log-panel">
-      <h2>Combat Log</h2>
-      <ol>${state.log.map((entry) => `<li>${entry}</li>`).join('')}</ol>
+    <section class="hand-dock" aria-label="Player hand">
+      <div class="hand-header"><strong>Your hand</strong><span>Press 1-5 or click a card</span></div>
+      <div class="hand">${state.hand.map(cardTemplate).join('') || '<p class="empty-hand">No cards in hand.</p>'}</div>
     </section>
   `;
 
@@ -1129,7 +1111,7 @@ function combatantTemplate(name, hp, maxHp, block, detail, className, portrait, 
     <article class="combatant ${className}">
       <div class="combatant-header">
         <h2>${name}</h2>
-        <span class="portrait" aria-hidden="true">${portrait}</span>
+        <span class="portrait" aria-hidden="true"><svg><use href="${astralAssetsUrl}#${portrait}"></use></svg></span>
       </div>
       <div class="hp-bar" aria-label="${name} health">
         <span style="width: ${hpPercent}%"></span>
@@ -1162,10 +1144,10 @@ function cardTemplate(card) {
         <span class="cost">${card.cost}</span>
         <span class="type">${card.type}</span>
       </span>
-      ${preview}
-      <span class="archetype">${card.archetype}</span>
       <span class="card-art" aria-hidden="true">${cardGlyph(card.type)}</span>
+      <span class="archetype">${card.archetype}</span>
       <strong>${card.name}</strong>
+      ${preview}
       <p>${card.text}</p>
     </button>
   `;
