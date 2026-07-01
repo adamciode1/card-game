@@ -6,10 +6,11 @@ const CARD_LIBRARY = [
     name: 'Star Strike',
     cost: 1,
     type: 'Attack',
-    text: 'Deal 7 damage.',
-    copies: 4,
+    text: 'Deal 6 damage. If the enemy is marked, deal +4 damage.',
+    copies: 3,
     play(state) {
-      dealDamage(state, 7);
+      const bonus = consumeMarkedBonus(state);
+      dealDamage(state, 6 + bonus);
     },
   },
   {
@@ -17,11 +18,11 @@ const CARD_LIBRARY = [
     name: 'Moon Ward',
     cost: 1,
     type: 'Skill',
-    text: 'Gain 6 block.',
+    text: 'Gain 7 block. Gain 2 more block if a gambit is pending.',
     copies: 3,
     play(state) {
-      state.player.block += 6;
-      addLog(state, 'Moon Ward raises a silver shield for 6 block.');
+      const gambitBonus = state.gambits.length > 0 ? 2 : 0;
+      gainBlock(state, 7 + gambitBonus, `Moon Ward raises a silver shield for ${7 + gambitBonus} block.`);
     },
   },
   {
@@ -38,24 +39,59 @@ const CARD_LIBRARY = [
     },
   },
   {
+    id: 'astral-mark',
+    name: 'Astral Mark',
+    cost: 1,
+    type: 'Hex',
+    text: 'Apply 1 marked. The next attack against a marked enemy deals +4 damage.',
+    copies: 2,
+    play(state) {
+      state.enemy.status.marked += 1;
+      addLog(state, 'Astral Mark paints a weak point in starlight.');
+    },
+  },
+  {
+    id: 'eclipse-gambit',
+    name: 'Eclipse Gambit',
+    cost: 1,
+    type: 'Gambit',
+    text: 'Arm a gambit: at the start of your next turn, deal 12 damage and gain 1 spark.',
+    copies: 2,
+    play(state) {
+      armGambit(state, {
+        name: 'Eclipse Gambit',
+        turns: 1,
+        description: '12 damage + 1 spark',
+        resolve(targetState) {
+          addLog(targetState, 'Eclipse Gambit springs from the shadows.');
+          dealDamage(targetState, 12);
+          targetState.player.energy += 1;
+          addLog(targetState, 'The gambit refunds 1 spark.');
+        },
+      });
+    },
+  },
+  {
     id: 'nova-burst',
     name: 'Nova Burst',
     cost: 2,
     type: 'Attack',
-    text: 'Deal 13 damage. Lose 2 block.',
+    text: 'Deal 12 damage. Apply 2 scorch.',
     copies: 1,
     play(state) {
-      dealDamage(state, 13);
-      state.player.block = Math.max(0, state.player.block - 2);
-      addLog(state, 'The nova recoil strips away 2 block.');
+      const bonus = consumeMarkedBonus(state);
+      dealDamage(state, 12 + bonus);
+      state.enemy.status.scorch += 2;
+      addLog(state, 'Nova Burst leaves the Ember Wolf scorched.');
     },
   },
 ];
 
 const ENEMY_PATTERN = [
   { name: 'Claw Sweep', intent: 'Attack 8', damage: 8 },
-  { name: 'Guard Up', intent: 'Block 6', block: 6 },
-  { name: 'Ravenous Bite', intent: 'Attack 12', damage: 12 },
+  { name: 'Smoke Hide', intent: 'Block 7 + mark you', block: 7, playerMarked: 1 },
+  { name: 'Ravenous Bite', intent: 'Attack 11', damage: 11 },
+  { name: 'Kindle Fury', intent: 'Gain 2 strength', strength: 2 },
 ];
 
 const app = document.querySelector('#app');
@@ -70,14 +106,15 @@ function createGame() {
   const initialState = {
     phase: 'player',
     turn: 1,
-    player: { hp: 48, maxHp: 48, block: 0, energy: 3, maxEnergy: 3 },
-    enemy: { name: 'Ember Wolf', hp: 42, maxHp: 42, block: 0, patternIndex: 0 },
+    player: { hp: 52, maxHp: 52, block: 0, energy: 3, maxEnergy: 3, status: { marked: 0 } },
+    enemy: { name: 'Ember Wolf', hp: 56, maxHp: 56, block: 0, patternIndex: 0, status: { marked: 0, scorch: 0, strength: 0 } },
     deck: shuffle(deck),
     hand: [],
     discard: [],
     exhaust: [],
+    gambits: [],
     log: [],
-    message: 'Draw your opening hand and defeat the Ember Wolf.',
+    message: 'Stack marks, defend while gambits arm, and burst down the Ember Wolf.',
     result: null,
   };
 
@@ -124,12 +161,17 @@ function runEnemyTurn() {
     state.enemy.block += intent.block;
     addLog(state, `Ember Wolf gains ${intent.block} block.`);
   }
+  if (intent.playerMarked) {
+    state.player.status.marked += intent.playerMarked;
+    addLog(state, 'Smoke Hide marks you for the wolf\'s next attack.');
+  }
+  if (intent.strength) {
+    state.enemy.status.strength += intent.strength;
+    addLog(state, `Ember Wolf gains ${intent.strength} strength.`);
+  }
   if (intent.damage) {
-    const blocked = Math.min(state.player.block, intent.damage);
-    const taken = intent.damage - blocked;
-    state.player.block -= blocked;
-    state.player.hp -= taken;
-    addLog(state, `You block ${blocked} and take ${taken} damage.`);
+    const markedBonus = consumePlayerMarkedBonus(state);
+    takeDamage(state, intent.damage + state.enemy.status.strength + markedBonus);
   }
   state.enemy.patternIndex = (state.enemy.patternIndex + 1) % ENEMY_PATTERN.length;
 }
@@ -140,8 +182,16 @@ function startPlayerTurn() {
   state.player.energy = state.player.maxEnergy;
   state.player.block = 0;
   state.enemy.block = 0;
+  resolveScorch(state);
+  tickGambits(state);
   drawCards(state, 5);
-  state.message = `Turn ${state.turn}: choose your cards carefully.`;
+  checkResult(state);
+  state.message = state.result ? state.message : `Turn ${state.turn}: mark targets, set gambits, or defend.`;
+}
+
+function gainBlock(state, amount, message) {
+  state.player.block += amount;
+  addLog(state, message);
 }
 
 function dealDamage(state, amount) {
@@ -150,6 +200,50 @@ function dealDamage(state, amount) {
   state.enemy.block -= blocked;
   state.enemy.hp -= dealt;
   addLog(state, `Ember Wolf blocks ${blocked} and takes ${dealt} damage.`);
+}
+
+function takeDamage(state, amount) {
+  const blocked = Math.min(state.player.block, amount);
+  const taken = amount - blocked;
+  state.player.block -= blocked;
+  state.player.hp -= taken;
+  addLog(state, `You block ${blocked} and take ${taken} damage.`);
+}
+
+function consumeMarkedBonus(state) {
+  if (state.enemy.status.marked <= 0) return 0;
+  state.enemy.status.marked -= 1;
+  addLog(state, 'Astral Mark detonates for +4 attack damage.');
+  return 4;
+}
+
+function consumePlayerMarkedBonus(state) {
+  if (state.player.status.marked <= 0) return 0;
+  state.player.status.marked -= 1;
+  addLog(state, 'The wolf consumes your mark for +3 damage.');
+  return 3;
+}
+
+function resolveScorch(state) {
+  if (state.enemy.status.scorch <= 0) return;
+  const scorchDamage = state.enemy.status.scorch;
+  state.enemy.hp -= scorchDamage;
+  addLog(state, `Scorch burns the Ember Wolf for ${scorchDamage} damage.`);
+}
+
+function armGambit(state, gambit) {
+  state.gambits.push(gambit);
+  addLog(state, `${gambit.name} is armed for next turn.`);
+}
+
+function tickGambits(state) {
+  const resolving = [];
+  state.gambits.forEach((gambit) => {
+    gambit.turns -= 1;
+    if (gambit.turns <= 0) resolving.push(gambit);
+  });
+  state.gambits = state.gambits.filter((gambit) => gambit.turns > 0);
+  resolving.forEach((gambit) => gambit.resolve(state));
 }
 
 function drawCards(state, count) {
@@ -183,7 +277,7 @@ function checkResult(state) {
 
 function addLog(state, message) {
   state.log.unshift(message);
-  state.log = state.log.slice(0, 8);
+  state.log = state.log.slice(0, 10);
 }
 
 function shuffle(cards) {
@@ -200,9 +294,9 @@ function render() {
   app.innerHTML = `
     <section class="hero-panel">
       <div>
-        <p class="eyebrow">Session 1 Prototype</p>
+        <p class="eyebrow">Session 2 Prototype</p>
         <h1>Astral Gambit</h1>
-        <p class="subtitle">Play cards, manage spark, and survive a compact test encounter.</p>
+        <p class="subtitle">Mark enemies, arm delayed gambits, and time your defenses around readable intents.</p>
       </div>
       <div class="controls">
         <button class="secondary" data-action="debug-draw">Debug Draw</button>
@@ -212,14 +306,15 @@ function render() {
     </section>
 
     <section class="battlefield">
-      ${combatantTemplate('Player', state.player.hp, state.player.maxHp, state.player.block, `${state.player.energy}/${state.player.maxEnergy} spark`, 'player-card')}
+      ${combatantTemplate('Player', state.player.hp, state.player.maxHp, state.player.block, `${state.player.energy}/${state.player.maxEnergy} spark`, 'player-card', playerStatusTemplate())}
       <div class="turn-panel">
         <p class="eyebrow">Turn ${state.turn}</p>
         <h2>${state.message}</h2>
         <p>Enemy intent: <strong>${intent.intent}</strong></p>
+        ${gambitTemplate()}
         <button class="end-turn" data-action="end-turn" ${state.result ? 'disabled' : ''}>End Turn</button>
       </div>
-      ${combatantTemplate(state.enemy.name, state.enemy.hp, state.enemy.maxHp, state.enemy.block, intent.intent, 'enemy-card')}
+      ${combatantTemplate(state.enemy.name, state.enemy.hp, state.enemy.maxHp, state.enemy.block, intent.intent, 'enemy-card', enemyStatusTemplate())}
     </section>
 
     <section class="zones">
@@ -258,7 +353,7 @@ function render() {
   });
 }
 
-function combatantTemplate(name, hp, maxHp, block, detail, className) {
+function combatantTemplate(name, hp, maxHp, block, detail, className, statusMarkup = '') {
   const hpPercent = Math.max(0, (hp / maxHp) * 100);
   return `
     <article class="combatant ${className}">
@@ -269,6 +364,7 @@ function combatantTemplate(name, hp, maxHp, block, detail, className) {
       <p><strong>${hp}/${maxHp}</strong> HP</p>
       <p><strong>${block}</strong> Block</p>
       <p class="detail">${detail}</p>
+      ${statusMarkup}
     </article>
   `;
 }
@@ -292,4 +388,31 @@ function cardTemplate(card) {
       <p>${card.text}</p>
     </button>
   `;
+}
+
+function gambitTemplate() {
+  if (state.gambits.length === 0) return '<p class="gambit-empty">No gambits armed.</p>';
+  return `
+    <div class="gambit-row" aria-label="Armed gambits">
+      ${state.gambits.map((gambit) => `<span>${gambit.name}: ${gambit.description}</span>`).join('')}
+    </div>
+  `;
+}
+
+function enemyStatusTemplate() {
+  return statusListTemplate([
+    ['Marked', state.enemy.status.marked],
+    ['Scorch', state.enemy.status.scorch],
+    ['Strength', state.enemy.status.strength],
+  ]);
+}
+
+function playerStatusTemplate() {
+  return statusListTemplate([['Marked', state.player.status.marked]]);
+}
+
+function statusListTemplate(entries) {
+  const activeEntries = entries.filter(([, value]) => value > 0);
+  if (activeEntries.length === 0) return '<p class="status-empty">No statuses</p>';
+  return `<div class="status-list">${activeEntries.map(([label, value]) => `<span>${label} ${value}</span>`).join('')}</div>`;
 }
