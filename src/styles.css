@@ -12,6 +12,8 @@
   --panel: rgba(15, 13, 32, 0.78);
   --panel-bright: rgba(255, 255, 255, 0.08);
   --line: rgba(255, 255, 255, 0.14);
+  --motion-scale: 1;
+  --text-scale: 1;
 }
 
 * { box-sizing: border-box; }
@@ -25,6 +27,7 @@ body {
     radial-gradient(circle at 84% 8%, rgba(255, 174, 66, 0.2), transparent 28rem),
     radial-gradient(circle at 50% 88%, rgba(91, 227, 255, 0.11), transparent 30rem),
     linear-gradient(135deg, #090814 0%, #15112d 58%, #221533 100%);
+  font-size: calc(1rem * var(--text-scale));
 }
 
 body::before {
@@ -69,7 +72,10 @@ button:disabled {
 .log-panel,
 .zone,
 .combatant,
-.turn-panel {
+.turn-panel,
+.settings-panel,
+.shortcut-strip,
+.glossary-panel {
   border: 1px solid var(--line);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(18px);
@@ -115,7 +121,7 @@ h1 {
   color: #241018;
   font-weight: 900;
   box-shadow: 0 10px 26px rgba(255, 107, 107, 0.18);
-  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+  transition: transform calc(140ms / var(--motion-scale)) ease, box-shadow calc(140ms / var(--motion-scale)) ease, filter calc(140ms / var(--motion-scale)) ease;
 }
 
 .controls button:hover:not(:disabled),
@@ -145,6 +151,30 @@ h1 {
   background:
     linear-gradient(90deg, rgba(142, 231, 255, 0.05), transparent 28%, transparent 72%, rgba(255, 107, 107, 0.06)),
     rgba(255, 255, 255, 0.06);
+}
+
+.settings-panel {
+  display: grid;
+  grid-template-columns: 1.2fr repeat(3, minmax(10rem, 1fr)) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 1.2rem;
+  border-radius: 24px;
+  background: rgba(15, 13, 32, 0.82);
+}
+
+.settings-panel h2 { font-size: 1.2rem; }
+
+.settings-panel label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.settings-panel input {
+  accent-color: var(--gold);
 }
 
 .combatant,
@@ -276,8 +306,8 @@ h1 {
     linear-gradient(160deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.04)),
     #19152f;
   text-align: left;
-  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
-  animation: card-arrive 260ms ease both;
+  transition: transform calc(140ms / var(--motion-scale)) ease, border-color calc(140ms / var(--motion-scale)) ease, box-shadow calc(140ms / var(--motion-scale)) ease;
+  animation: card-arrive calc(260ms / var(--motion-scale)) ease both;
 }
 
 .card::before {
@@ -358,6 +388,54 @@ h1 {
 .card p { align-self: end; color: #d8d1e9; }
 .empty-hand { grid-column: 1 / -1; text-align: center; color: var(--muted); }
 
+.preview-chip {
+  width: fit-content;
+  padding: 0.24rem 0.52rem;
+  border: 1px solid rgba(255, 217, 138, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 217, 138, 0.1);
+  color: #ffe7ad;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.shortcut-strip,
+.glossary-panel {
+  border-radius: 22px;
+  background: rgba(15, 13, 32, 0.68);
+}
+
+.shortcut-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.75rem 1rem;
+}
+
+.shortcut-strip span,
+.glossary-panel span {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid rgba(142, 231, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(142, 231, 255, 0.08);
+  color: #dff7ff;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.glossary-panel {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1rem 1.2rem;
+}
+
+.glossary-panel div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .progression-chip {
   display: grid;
   gap: 0.2rem;
@@ -399,7 +477,7 @@ h1 {
     linear-gradient(155deg, var(--card-glow, rgba(142, 231, 255, 0.14)), transparent 64%),
     rgba(15, 13, 32, 0.92);
   text-align: left;
-  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  transition: transform calc(140ms / var(--motion-scale)) ease, border-color calc(140ms / var(--motion-scale)) ease, box-shadow calc(140ms / var(--motion-scale)) ease;
 }
 
 .reward-card:hover {
@@ -465,7 +543,8 @@ h1 {
 @media (max-width: 1100px) {
   body { min-width: 0; }
   .hero-panel,
-  .battlefield { grid-template-columns: 1fr; flex-direction: column; align-items: stretch; }
+  .battlefield,
+  .settings-panel { grid-template-columns: 1fr; flex-direction: column; align-items: stretch; }
   .hand,
   .reward-grid { grid-template-columns: repeat(2, minmax(11rem, 1fr)); }
 }
@@ -515,7 +594,7 @@ h1 {
     linear-gradient(155deg, var(--node-glow, rgba(142, 231, 255, 0.14)), transparent 64%),
     rgba(15, 13, 32, 0.92);
   text-align: left;
-  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  transition: transform calc(140ms / var(--motion-scale)) ease, border-color calc(140ms / var(--motion-scale)) ease, box-shadow calc(140ms / var(--motion-scale)) ease;
 }
 
 .map-node:hover {

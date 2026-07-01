@@ -1,6 +1,6 @@
 # Astral Gambit Prototype
 
-A small browser-based card game prototype currently focused on Session 7 of the development plan. The build keeps the playable combat loop, archetype card rewards, and boss encounter intact while connecting battles through a compact mini-run map with route choices, utility nodes, and fast transitions.
+A small browser-based card game prototype currently focused on Session 8 of the development plan. The build keeps the playable combat loop, archetype card rewards, and boss encounter intact while adding lightweight polish for accessibility, usability, and faster PC play.
 
 ## Run locally
 
@@ -14,8 +14,11 @@ Open the local Vite URL shown in the terminal.
 ## Prototype controls
 
 - Click cards in your hand to play them.
+- Press number keys **1-5** to play cards from left to right.
+- Press **Space** to end turn, **M** to open the map after claiming rewards, **D** to debug draw, and **S** to add spark.
 - Click **End Turn** to discard your hand and let the enemy act.
 - After a victory, choose a card reward, click **Open Map**, then pick the next route node.
+- Open **Settings** to adjust fullscreen, animation speed, text readability, and volume preference.
 - Use **Debug Draw** and **+1 Spark** to quickly test card draw and energy states.
 - Click **Restart Run** after victory, defeat, or whenever you want a fresh sequence.
 
@@ -42,6 +45,14 @@ Open the local Vite URL shown in the terminal.
 - The run panel tracks claimed rewards, chosen archetypes, and the route history so deck direction remains visible between nodes.
 - The mini-run map starts with an opening fight, then offers a safe combat or elite combat branch, one utility choice, and a final boss.
 - Utility nodes stay lightweight: rest heals HP, upgrade grants +1 max spark, and event adds a random reward card.
+
+## Current polish, accessibility, and usability
+
+- Settings are intentionally small and run-focused: fullscreen toggle, animation speed, text readability scale, and a saved volume preference.
+- Keyboard shortcuts support quick mouse-and-keyboard PC play without changing the core rules.
+- Attack cards show a simple HP damage preview that accounts for enemy block and marked bonus.
+- Card, status, and glossary tooltips explain the core terms directly in the interface.
+- A shortcut strip and quick glossary keep new-player guidance visible without adding a full tutorial system yet.
 
 ## Current mini-run route
 
