@@ -334,6 +334,27 @@ const ENCOUNTERS = [
   },
 ];
 
+
+const RUN_MAP = [
+  [
+    { id: 'ember-trail', type: 'combat', label: 'Opening Fight', detail: 'A fair first battle to start the route.', encounterId: 'ember-wolf' },
+  ],
+  [
+    { id: 'aegis-crossing', type: 'combat', label: 'Safe Fight', detail: 'Fight the Aegis Moth and preserve HP for the boss.', encounterId: 'aegis-moth' },
+    { id: 'oracle-elite', type: 'elite', label: 'Elite Fight', detail: 'Face the Hollow Oracle for an extra card reward.', encounterId: 'hollow-oracle', bonusReward: true },
+  ],
+  [
+    { id: 'moonwell-rest', type: 'rest', label: 'Rest Site', detail: 'Recover 16 HP before the finale.' },
+    { id: 'forge-upgrade', type: 'upgrade', label: 'Upgrade Shrine', detail: 'Gain +1 max spark for the rest of the run.' },
+    { id: 'comet-cache', type: 'event', label: 'Comet Cache', detail: 'Add a random reward card without another fight.' },
+  ],
+  [
+    { id: 'solar-throne', type: 'boss', label: 'Boss', detail: 'Challenge the Solar Tyrant and complete the mini-run.', encounterId: 'solar-tyrant' },
+  ],
+];
+
+const ENCOUNTER_BY_ID = Object.fromEntries(ENCOUNTERS.map((encounter) => [encounter.id, encounter]));
+
 const app = document.querySelector('#app');
 let state = createGame();
 render();
@@ -347,15 +368,17 @@ function createGame() {
     phase: 'player',
     turn: 1,
     player: { hp: 52, maxHp: 52, block: 0, energy: 3, maxEnergy: 3, status: { marked: 0 } },
-    encounterIndex: 0,
-    enemy: createEnemy(ENCOUNTERS[0]),
+    mapStep: 0,
+    currentNode: RUN_MAP[0][0],
+    routeHistory: [RUN_MAP[0][0]],
+    enemy: createEnemy(ENCOUNTER_BY_ID[RUN_MAP[0][0].encounterId]),
     deck: shuffle(deck),
     hand: [],
     discard: [],
     exhaust: [],
     gambits: [],
     log: [],
-    message: ENCOUNTERS[0].intro,
+    message: ENCOUNTER_BY_ID[RUN_MAP[0][0].encounterId].intro,
     result: null,
     rewardOptions: [],
     rewardsClaimed: [],
@@ -363,6 +386,7 @@ function createGame() {
 
   drawCards(initialState, 5);
   addLog(initialState, `${initialState.enemy.name} appears. ${initialState.enemy.mechanics}`);
+  addLog(initialState, 'The mini-run begins: win battles, choose rewards, then pick a route node.');
   return initialState;
 }
 
@@ -529,14 +553,14 @@ function checkResult(state) {
   if (state.enemy.hp <= 0) {
     state.enemy.hp = 0;
     state.result = 'victory';
-    const hasNext = state.encounterIndex < ENCOUNTERS.length - 1;
-    if (hasNext && state.rewardOptions.length === 0) {
+    const hasNextNode = state.mapStep < RUN_MAP.length - 1;
+    if (hasNextNode && state.rewardOptions.length === 0) {
       state.phase = 'reward';
       state.rewardOptions = rollRewardOptions(state);
     }
-    state.message = hasNext
-      ? `Victory! Choose one reward before the next encounter.`
-      : 'Victory! The short encounter sequence is complete.';
+    state.message = hasNextNode
+      ? 'Victory! Choose one card reward, then open the map.'
+      : 'Victory! The mini-run is complete.';
     addLog(state, `${state.enemy.name} defeated.`);
   } else if (state.player.hp <= 0) {
     state.player.hp = 0;
@@ -569,7 +593,7 @@ function rollRewardOptions(state) {
   const ownedRewardIds = new Set(state.rewardsClaimed.map((card) => card.id));
   const freshRewards = REWARD_CARDS.filter((card) => !ownedRewardIds.has(card.id));
   const rewardPool = freshRewards.length >= 3 ? freshRewards : REWARD_CARDS;
-  return shuffle(rewardPool).slice(0, 3);
+  return shuffle(rewardPool).slice(0, state.currentNode?.bonusReward ? 4 : 3);
 }
 
 function render() {
@@ -577,9 +601,9 @@ function render() {
   app.innerHTML = `
     <section class="hero-panel">
       <div>
-        <p class="eyebrow">Session 6 Archetype Expansion</p>
+        <p class="eyebrow">Session 7 Mini-Run Map</p>
         <h1>Astral Gambit</h1>
-        <p class="subtitle">Build toward Starblade, Lunar Guard, Eclipse Gambit, Void Hex, or Solar Flare synergies.</p>
+        <p class="subtitle">Choose a compact route of fights, rests, upgrades, events, and a boss.</p>
       </div>
       <div class="controls">
         <button class="secondary" data-action="debug-draw">Debug Draw</button>
@@ -591,13 +615,11 @@ function render() {
     <section class="battlefield">
       ${combatantTemplate('Player', state.player.hp, state.player.maxHp, state.player.block, `${state.player.energy}/${state.player.maxEnergy} spark`, 'player-card', '✦', playerStatusTemplate())}
       <div class="turn-panel">
-        <p class="eyebrow">Encounter ${state.encounterIndex + 1}/${ENCOUNTERS.length} · Turn ${state.turn}</p>
+        <p class="eyebrow">${runStepLabel()} · Turn ${state.turn}</p>
         <h2>${state.message}</h2>
-        <div class="intent-card" aria-label="Enemy intent">
-          <span class="intent-icon" aria-hidden="true">${intentIcon(intent)}</span>
-          <p>Enemy intent: <strong>${intent.intent}</strong></p>
-        </div>
+        ${intentTemplate(intent)}
         ${gambitTemplate()}
+        ${mapTemplate()}
         ${progressionTemplate()}
         ${rewardTemplate()}
         ${resultActionTemplate()}
@@ -629,7 +651,10 @@ function render() {
     state = createGame();
     render();
   });
-  app.querySelector('[data-action="next-encounter"]')?.addEventListener('click', nextEncounter);
+  app.querySelector('[data-action="open-map"]')?.addEventListener('click', openMap);
+  app.querySelectorAll('[data-node-id]').forEach((button) => {
+    button.addEventListener('click', () => chooseMapNode(button.dataset.nodeId));
+  });
   app.querySelectorAll('[data-reward-id]').forEach((button) => {
     button.addEventListener('click', () => chooseReward(button.dataset.rewardId));
   });
@@ -645,16 +670,66 @@ function render() {
   });
 }
 
-function nextEncounter() {
-  if (state.result !== 'victory' || state.encounterIndex >= ENCOUNTERS.length - 1) return;
-  state.encounterIndex += 1;
-  state.enemy = createEnemy(ENCOUNTERS[state.encounterIndex]);
+function openMap() {
+  if (state.result !== 'victory' || state.rewardOptions.length > 0 || state.mapStep >= RUN_MAP.length - 1) return;
+  state.mapStep += 1;
+  state.phase = 'map';
+  state.result = null;
+  state.message = 'Choose your next route node.';
+  render();
+}
+
+function chooseMapNode(nodeId) {
+  if (state.phase !== 'map') return;
+  const node = RUN_MAP[state.mapStep].find((candidate) => candidate.id === nodeId);
+  if (!node) return;
+  state.currentNode = node;
+  state.routeHistory.push(node);
+
+  if (node.type === 'rest') {
+    state.player.hp = Math.min(state.player.maxHp, state.player.hp + 16);
+    addLog(state, 'Rest site restores 16 HP.');
+    advanceAfterUtilityNode('Rest complete. Continue to the boss route.');
+    return;
+  }
+
+  if (node.type === 'upgrade') {
+    state.player.maxEnergy += 1;
+    state.player.energy = state.player.maxEnergy;
+    addLog(state, 'Upgrade shrine grants +1 max spark.');
+    advanceAfterUtilityNode('Upgrade complete. Continue to the boss route.');
+    return;
+  }
+
+  if (node.type === 'event') {
+    const reward = shuffle(REWARD_CARDS)[0];
+    state.discard.push(createCardInstance(reward));
+    state.rewardsClaimed.push(reward);
+    addLog(state, `Comet Cache grants ${reward.name}.`);
+    advanceAfterUtilityNode('Event complete. Continue to the boss route.');
+    return;
+  }
+
+  startCombatNode(node);
+}
+
+function advanceAfterUtilityNode(message) {
+  state.mapStep += 1;
+  state.phase = 'map';
+  state.result = null;
+  state.rewardOptions = [];
+  state.message = message;
+  render();
+}
+
+function startCombatNode(node) {
+  state.enemy = createEnemy(ENCOUNTER_BY_ID[node.encounterId]);
   state.phase = 'player';
   state.result = null;
   state.rewardOptions = [];
   state.turn = 1;
   state.player.block = 0;
-  state.player.hp = Math.min(state.player.maxHp, state.player.hp + 18);
+  state.player.hp = Math.min(state.player.maxHp, state.player.hp + (node.type === 'elite' ? 8 : 12));
   state.player.energy = state.player.maxEnergy;
   state.player.status.marked = 0;
   state.gambits = [];
@@ -664,7 +739,7 @@ function nextEncounter() {
   drawCards(state, 5);
   state.message = state.enemy.intro;
   addLog(state, `${state.enemy.name} appears. ${state.enemy.mechanics}`);
-  addLog(state, 'A brief respite restores up to 18 HP.');
+  addLog(state, `${node.label} chosen: ${node.detail}`);
   render();
 }
 
@@ -679,6 +754,58 @@ function chooseReward(cardId) {
   state.message = `${reward.name} added to your discard pile. Continue when ready.`;
   addLog(state, `Reward claimed: ${reward.name}.`);
   render();
+}
+
+function runStepLabel() {
+  const total = RUN_MAP.length;
+  if (state.phase === 'map') return `Map ${state.mapStep + 1}/${total}`;
+  return `Node ${state.mapStep + 1}/${total} · ${state.currentNode.label}`;
+}
+
+function intentTemplate(intent) {
+  if (state.phase === 'map') return '<p class="gambit-empty">Pick a node to reveal the next enemy intent.</p>';
+  return `
+    <div class="intent-card" aria-label="Enemy intent">
+      <span class="intent-icon" aria-hidden="true">${intentIcon(intent)}</span>
+      <p>Enemy intent: <strong>${intent.intent}</strong></p>
+    </div>
+  `;
+}
+
+function mapTemplate() {
+  if (state.phase !== 'map') return routeTemplate();
+  const choices = RUN_MAP[state.mapStep];
+  return `
+    <div class="map-panel" aria-label="Run map choices">
+      <p class="eyebrow">Choose next node</p>
+      <div class="map-grid">
+        ${choices.map(mapNodeTemplate).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function routeTemplate() {
+  return `
+    <div class="route-chip">
+      ${state.routeHistory.map((node) => `<span>${nodeIcon(node.type)} ${node.label}</span>`).join('')}
+    </div>
+  `;
+}
+
+function mapNodeTemplate(node) {
+  return `
+    <button class="map-node" data-node-id="${node.id}" data-node-type="${node.type}">
+      <span>${nodeIcon(node.type)}</span>
+      <strong>${node.label}</strong>
+      <small>${node.detail}</small>
+    </button>
+  `;
+}
+
+function nodeIcon(type) {
+  const icons = { combat: '⚔', elite: '✹', rest: '☾', upgrade: '◆', event: '✦', boss: '☀' };
+  return icons[type] ?? '✦';
 }
 
 function progressionTemplate() {
@@ -731,12 +858,13 @@ function rewardCardTemplate(card) {
 }
 
 function resultActionTemplate() {
-  if (state.result === 'victory' && state.encounterIndex < ENCOUNTERS.length - 1) {
+  if (state.result === 'victory' && state.mapStep < RUN_MAP.length - 1) {
     const disabled = state.rewardOptions.length > 0 ? 'disabled' : '';
-    return `<button class="end-turn" data-action="next-encounter" ${disabled}>Next Encounter</button>`;
+    return `<button class="end-turn" data-action="open-map" ${disabled}>Open Map</button>`;
   }
-  return `<button class="end-turn" data-action="end-turn" ${state.result ? 'disabled' : ''}>End Turn</button>`;
+  return `<button class="end-turn" data-action="end-turn" ${state.result || state.phase === 'map' ? 'disabled' : ''}>End Turn</button>`;
 }
+
 
 function combatantTemplate(name, hp, maxHp, block, detail, className, portrait, statusMarkup = '') {
   const hpPercent = Math.max(0, (hp / maxHp) * 100);
