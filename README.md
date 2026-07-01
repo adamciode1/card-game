@@ -1,6 +1,6 @@
 # Astral Gambit Prototype
 
-A small browser-based card game prototype currently focused on Session 5 of the development plan. The build keeps the earlier playable combat loop and escalating encounter sequence intact while adding post-encounter card rewards that let players shape their deck during the run.
+A small browser-based card game prototype currently focused on Session 6 of the development plan. The build keeps the earlier playable combat loop, escalating encounter sequence, and post-encounter card rewards intact while expanding card rewards into clearer archetype packages with hybrid and rare build-around options.
 
 ## Run locally
 
@@ -29,11 +29,17 @@ Open the local Vite URL shown in the terminal.
 - **Gambits** are delayed plays that arm now and resolve at the start of your next turn.
 - **Wisps** are summoned enemy helpers that add chip damage to specific Hollow Oracle attacks.
 
-## Current progression
+## Current progression and archetypes
 
 - Non-final victories offer three card rewards. Pick one to add it to your discard pile for the rest of the run.
-- Reward cards support different strategic directions: gambit payoff, sustain, tempo setup, and mark/scorch combos.
-- The run panel tracks claimed rewards so deck changes are visible between encounters.
+- Reward cards now show their archetype and rarity so deckbuilding decisions are easier to compare at a glance.
+- **Starblade** cards convert marked windows into burst damage and occasional draw.
+- **Lunar Guard** cards emphasize block, sustain, and defensive payoffs.
+- **Eclipse Gambit** cards reward planning a turn ahead with delayed spark, draw, and damage.
+- **Void Hex** cards set up marked/scorch combo turns.
+- **Solar Flare** cards apply scorch and include higher-risk rare finishers.
+- Cross-archetype rewards such as Mirror Aegis and Solar Kindling encourage hybrid decks without adding new core rules.
+- The run panel tracks claimed rewards and summarizes chosen archetypes so deck direction remains visible between encounters.
 
 ## Current encounter sequence
 
