@@ -1101,3 +1101,36 @@ h1 {
 .type,
 .archetype,
 .preview-chip { font-size: 0.67rem; }
+
+/* Conflict-resolution polish: keep intent in both places without returning to a cluttered wall of text. */
+.intent-summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: fit-content;
+  padding: 0.38rem 0.65rem;
+  border: 1px solid rgba(255, 217, 138, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 217, 138, 0.08);
+  color: #ffe7ad;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.side-panel .glossary-panel {
+  padding: 0.65rem;
+}
+
+.side-panel .glossary-panel h2 {
+  font-size: 0.9rem;
+}
+
+.side-panel .glossary-panel div {
+  gap: 0.3rem;
+}
+
+.side-panel .glossary-panel span {
+  padding: 0.22rem 0.42rem;
+  font-size: 0.68rem;
+}

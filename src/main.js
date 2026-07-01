@@ -669,6 +669,7 @@ function render() {
         <div class="turn-panel">
           <p class="eyebrow">Plan your turn</p>
           <h2>${state.message}</h2>
+          ${intentSummaryTemplate(intent)}
           ${gambitTemplate()}
           ${mapTemplate()}
           ${rewardTemplate()}
@@ -686,7 +687,8 @@ function render() {
         </section>
         <section class="zones">${zoneTemplate('Draw', state.deck.length)}${zoneTemplate('Discard', state.discard.length)}${zoneTemplate('Exhaust', state.exhaust.length)}</section>
         ${progressionTemplate()}
-        <section class="log-panel"><h2>Latest actions</h2><ol>${state.log.slice(0, 4).map((entry) => `<li>${entry}</li>`).join('')}</ol></section>
+        ${glossaryTemplate()}
+        <section class="log-panel"><h2>Latest actions</h2><ol>${state.log.slice(0, 5).map((entry) => `<li>${entry}</li>`).join('')}</ol></section>
       </aside>
     </main>
 
@@ -1015,6 +1017,12 @@ function intentTemplate(intent) {
     </div>
   `;
 }
+
+function intentSummaryTemplate(intent) {
+  if (state.phase === 'map') return '';
+  return `<p class="intent-summary"><span>${intentIcon(intent)}</span> Next enemy action: <strong>${intent.intent}</strong></p>`;
+}
+
 
 function mapTemplate() {
   if (state.phase !== 'map') return routeTemplate();
