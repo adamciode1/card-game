@@ -294,7 +294,7 @@ function render() {
   app.innerHTML = `
     <section class="hero-panel">
       <div>
-        <p class="eyebrow">Session 2 Prototype</p>
+        <p class="eyebrow">Session 3 Visual Pass</p>
         <h1>Astral Gambit</h1>
         <p class="subtitle">Mark enemies, arm delayed gambits, and time your defenses around readable intents.</p>
       </div>
@@ -306,15 +306,18 @@ function render() {
     </section>
 
     <section class="battlefield">
-      ${combatantTemplate('Player', state.player.hp, state.player.maxHp, state.player.block, `${state.player.energy}/${state.player.maxEnergy} spark`, 'player-card', playerStatusTemplate())}
+      ${combatantTemplate('Player', state.player.hp, state.player.maxHp, state.player.block, `${state.player.energy}/${state.player.maxEnergy} spark`, 'player-card', '✦', playerStatusTemplate())}
       <div class="turn-panel">
         <p class="eyebrow">Turn ${state.turn}</p>
         <h2>${state.message}</h2>
-        <p>Enemy intent: <strong>${intent.intent}</strong></p>
+        <div class="intent-card" aria-label="Enemy intent">
+          <span class="intent-icon" aria-hidden="true">${intentIcon(intent)}</span>
+          <p>Enemy intent: <strong>${intent.intent}</strong></p>
+        </div>
         ${gambitTemplate()}
         <button class="end-turn" data-action="end-turn" ${state.result ? 'disabled' : ''}>End Turn</button>
       </div>
-      ${combatantTemplate(state.enemy.name, state.enemy.hp, state.enemy.maxHp, state.enemy.block, intent.intent, 'enemy-card', enemyStatusTemplate())}
+      ${combatantTemplate(state.enemy.name, state.enemy.hp, state.enemy.maxHp, state.enemy.block, intent.intent, 'enemy-card', '🐺', enemyStatusTemplate())}
     </section>
 
     <section class="zones">
@@ -353,16 +356,21 @@ function render() {
   });
 }
 
-function combatantTemplate(name, hp, maxHp, block, detail, className, statusMarkup = '') {
+function combatantTemplate(name, hp, maxHp, block, detail, className, portrait, statusMarkup = '') {
   const hpPercent = Math.max(0, (hp / maxHp) * 100);
   return `
     <article class="combatant ${className}">
-      <h2>${name}</h2>
+      <div class="combatant-header">
+        <h2>${name}</h2>
+        <span class="portrait" aria-hidden="true">${portrait}</span>
+      </div>
       <div class="hp-bar" aria-label="${name} health">
         <span style="width: ${hpPercent}%"></span>
       </div>
-      <p><strong>${hp}/${maxHp}</strong> HP</p>
-      <p><strong>${block}</strong> Block</p>
+      <div class="stat-grid">
+        <p class="stat-pill"><strong>${hp}/${maxHp}</strong> HP</p>
+        <p class="stat-pill"><strong>${block}</strong> Block</p>
+      </div>
       <p class="detail">${detail}</p>
       ${statusMarkup}
     </article>
@@ -381,13 +389,35 @@ function zoneTemplate(label, count) {
 function cardTemplate(card) {
   const disabled = state.result || card.cost > state.player.energy;
   return `
-    <button class="card" data-card-id="${card.instanceId}" ${disabled ? 'disabled' : ''}>
-      <span class="cost">${card.cost}</span>
-      <span class="type">${card.type}</span>
+    <button class="card" data-card-id="${card.instanceId}" data-type="${card.type}" ${disabled ? 'disabled' : ''}>
+      <span class="card-topline">
+        <span class="cost">${card.cost}</span>
+        <span class="type">${card.type}</span>
+      </span>
+      <span class="card-art" aria-hidden="true">${cardGlyph(card.type)}</span>
       <strong>${card.name}</strong>
       <p>${card.text}</p>
     </button>
   `;
+}
+
+
+function intentIcon(intent) {
+  if (intent.damage) return '⚔';
+  if (intent.block) return '◆';
+  if (intent.strength) return '▲';
+  return '✦';
+}
+
+function cardGlyph(type) {
+  const glyphs = {
+    Attack: '☄',
+    Skill: '◈',
+    Tactic: '✦',
+    Hex: '◌',
+    Gambit: '☾',
+  };
+  return glyphs[type] ?? '✦';
 }
 
 function gambitTemplate() {
