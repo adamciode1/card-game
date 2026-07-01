@@ -230,3 +230,39 @@ h1 {
   .battlefield { grid-template-columns: 1fr; flex-direction: column; align-items: stretch; }
   .hand { grid-template-columns: repeat(2, minmax(11rem, 1fr)); }
 }
+
+.status-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.9rem;
+}
+
+.status-list span,
+.gambit-row span,
+.status-empty,
+.gambit-empty {
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.status-list span,
+.gambit-row span {
+  padding: 0.32rem 0.62rem;
+  background: rgba(255, 217, 138, 0.14);
+  color: #ffe7ad;
+  border: 1px solid rgba(255, 217, 138, 0.22);
+}
+
+.status-empty,
+.gambit-empty {
+  color: #9f95bd;
+}
+
+.gambit-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem;
+}
