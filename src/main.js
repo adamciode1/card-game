@@ -82,16 +82,72 @@ const CARD_LIBRARY = [
       const bonus = consumeMarkedBonus(state);
       dealDamage(state, 12 + bonus);
       state.enemy.status.scorch += 2;
-      addLog(state, 'Nova Burst leaves the Ember Wolf scorched.');
+      addLog(state, `Nova Burst leaves ${state.enemy.name} scorched.`);
     },
   },
 ];
 
-const ENEMY_PATTERN = [
-  { name: 'Claw Sweep', intent: 'Attack 8', damage: 8 },
-  { name: 'Smoke Hide', intent: 'Block 7 + mark you', block: 7, playerMarked: 1 },
-  { name: 'Ravenous Bite', intent: 'Attack 11', damage: 11 },
-  { name: 'Kindle Fury', intent: 'Gain 2 strength', strength: 2 },
+const ENCOUNTERS = [
+  {
+    id: 'ember-wolf',
+    name: 'Ember Wolf',
+    archetype: 'Attacker / Disruptor',
+    portrait: '🐺',
+    maxHp: 56,
+    intro: 'The Ember Wolf teaches intent timing: block heavy bites and punish setup turns.',
+    mechanics: 'Marks you before bite turns; gains strength if left unchecked.',
+    pattern: [
+      { name: 'Claw Sweep', intent: 'Attack 8', damage: 8 },
+      { name: 'Smoke Hide', intent: 'Block 7 + mark you', block: 7, playerMarked: 1 },
+      { name: 'Ravenous Bite', intent: 'Attack 11', damage: 11 },
+      { name: 'Kindle Fury', intent: 'Gain 2 strength', strength: 2 },
+    ],
+  },
+  {
+    id: 'aegis-moth',
+    name: 'Aegis Moth',
+    archetype: 'Defender',
+    portrait: '🦋',
+    maxHp: 64,
+    intro: 'The Aegis Moth rewards saving burst damage for turns after its shell drops.',
+    mechanics: 'Alternates large block turns with modest attacks and a cleansing molt.',
+    pattern: [
+      { name: 'Glasswing Guard', intent: 'Block 12', block: 12 },
+      { name: 'Prism Dust', intent: 'Attack 7 + block 5', damage: 7, block: 5 },
+      { name: 'Moonlit Molt', intent: 'Cleanse scorch + block 8', block: 8, cleanseScorch: true },
+      { name: 'Wing Lash', intent: 'Attack 10', damage: 10 },
+    ],
+  },
+  {
+    id: 'hollow-oracle',
+    name: 'Hollow Oracle',
+    archetype: 'Summoner / Scaler',
+    portrait: '🜁',
+    maxHp: 70,
+    intro: 'The Hollow Oracle pressures slow hands with orbiting wisps that grow its offense.',
+    mechanics: 'Summons wisps; each wisp adds chip damage and empowers Starfall.',
+    pattern: [
+      { name: 'Call Wisps', intent: 'Summon 2 wisps', summons: 2 },
+      { name: 'Wisp Barrage', intent: 'Attack 6 + wisps', damage: 6, minionAttack: true },
+      { name: 'Dark Forecast', intent: 'Gain 2 strength + mark you', strength: 2, playerMarked: 1 },
+      { name: 'Starfall Choir', intent: 'Attack 10 + wisps', damage: 10, minionAttack: true },
+    ],
+  },
+  {
+    id: 'solar-tyrant',
+    name: 'Solar Tyrant',
+    archetype: 'Boss Pattern',
+    portrait: '☀',
+    maxHp: 88,
+    intro: 'The Solar Tyrant is a compact boss test with a readable three-turn burst cycle.',
+    mechanics: 'Builds strength, shields before a flare, then unleashes a large attack.',
+    pattern: [
+      { name: 'Royal Decree', intent: 'Gain 3 strength', strength: 3 },
+      { name: 'Solar Mantle', intent: 'Block 14 + mark you', block: 14, playerMarked: 1 },
+      { name: 'Crown Flare', intent: 'Attack 16', damage: 16 },
+      { name: 'Ashen Recovery', intent: 'Attack 8 + block 8', damage: 8, block: 8 },
+    ],
+  },
 ];
 
 const app = document.querySelector('#app');
@@ -107,20 +163,32 @@ function createGame() {
     phase: 'player',
     turn: 1,
     player: { hp: 52, maxHp: 52, block: 0, energy: 3, maxEnergy: 3, status: { marked: 0 } },
-    enemy: { name: 'Ember Wolf', hp: 56, maxHp: 56, block: 0, patternIndex: 0, status: { marked: 0, scorch: 0, strength: 0 } },
+    encounterIndex: 0,
+    enemy: createEnemy(ENCOUNTERS[0]),
     deck: shuffle(deck),
     hand: [],
     discard: [],
     exhaust: [],
     gambits: [],
     log: [],
-    message: 'Stack marks, defend while gambits arm, and burst down the Ember Wolf.',
+    message: ENCOUNTERS[0].intro,
     result: null,
   };
 
   drawCards(initialState, 5);
-  addLog(initialState, 'Encounter begins. Your stars flare to life.');
+  addLog(initialState, `${initialState.enemy.name} appears. ${initialState.enemy.mechanics}`);
   return initialState;
+}
+
+function createEnemy(encounter) {
+  return {
+    ...encounter,
+    hp: encounter.maxHp,
+    block: 0,
+    patternIndex: 0,
+    wisps: 0,
+    status: { marked: 0, scorch: 0, strength: 0 },
+  };
 }
 
 function playCard(instanceId) {
@@ -156,24 +224,34 @@ function endTurn() {
 
 function runEnemyTurn() {
   const intent = currentIntent(state);
-  addLog(state, `Ember Wolf uses ${intent.name}.`);
+  addLog(state, `${state.enemy.name} uses ${intent.name}.`);
   if (intent.block) {
     state.enemy.block += intent.block;
-    addLog(state, `Ember Wolf gains ${intent.block} block.`);
+    addLog(state, `${state.enemy.name} gains ${intent.block} block.`);
   }
   if (intent.playerMarked) {
     state.player.status.marked += intent.playerMarked;
-    addLog(state, 'Smoke Hide marks you for the wolf\'s next attack.');
+    addLog(state, `${state.enemy.name} marks you for its next attack.`);
   }
   if (intent.strength) {
     state.enemy.status.strength += intent.strength;
-    addLog(state, `Ember Wolf gains ${intent.strength} strength.`);
+    addLog(state, `${state.enemy.name} gains ${intent.strength} strength.`);
+  }
+  if (intent.summons) {
+    state.enemy.wisps += intent.summons;
+    addLog(state, `${state.enemy.name} summons ${intent.summons} wisps.`);
+  }
+  if (intent.cleanseScorch && state.enemy.status.scorch > 0) {
+    state.enemy.status.scorch = 0;
+    addLog(state, `${state.enemy.name} cleanses its scorch.`);
   }
   if (intent.damage) {
     const markedBonus = consumePlayerMarkedBonus(state);
-    takeDamage(state, intent.damage + state.enemy.status.strength + markedBonus);
+    const wispDamage = intent.minionAttack ? state.enemy.wisps * 2 : 0;
+    if (wispDamage > 0) addLog(state, `Wisps add ${wispDamage} damage.`);
+    takeDamage(state, intent.damage + state.enemy.status.strength + markedBonus + wispDamage);
   }
-  state.enemy.patternIndex = (state.enemy.patternIndex + 1) % ENEMY_PATTERN.length;
+  state.enemy.patternIndex = (state.enemy.patternIndex + 1) % state.enemy.pattern.length;
 }
 
 function startPlayerTurn() {
@@ -199,7 +277,7 @@ function dealDamage(state, amount) {
   const dealt = amount - blocked;
   state.enemy.block -= blocked;
   state.enemy.hp -= dealt;
-  addLog(state, `Ember Wolf blocks ${blocked} and takes ${dealt} damage.`);
+  addLog(state, `${state.enemy.name} blocks ${blocked} and takes ${dealt} damage.`);
 }
 
 function takeDamage(state, amount) {
@@ -220,7 +298,7 @@ function consumeMarkedBonus(state) {
 function consumePlayerMarkedBonus(state) {
   if (state.player.status.marked <= 0) return 0;
   state.player.status.marked -= 1;
-  addLog(state, 'The wolf consumes your mark for +3 damage.');
+  addLog(state, `${state.enemy.name} consumes your mark for +3 damage.`);
   return 3;
 }
 
@@ -228,7 +306,7 @@ function resolveScorch(state) {
   if (state.enemy.status.scorch <= 0) return;
   const scorchDamage = state.enemy.status.scorch;
   state.enemy.hp -= scorchDamage;
-  addLog(state, `Scorch burns the Ember Wolf for ${scorchDamage} damage.`);
+  addLog(state, `Scorch burns ${state.enemy.name} for ${scorchDamage} damage.`);
 }
 
 function armGambit(state, gambit) {
@@ -258,15 +336,18 @@ function drawCards(state, count) {
 }
 
 function currentIntent(state) {
-  return ENEMY_PATTERN[state.enemy.patternIndex];
+  return state.enemy.pattern[state.enemy.patternIndex];
 }
 
 function checkResult(state) {
   if (state.enemy.hp <= 0) {
     state.enemy.hp = 0;
     state.result = 'victory';
-    state.message = 'Victory! The Ember Wolf dissolves into starlight.';
-    addLog(state, 'Encounter won.');
+    const hasNext = state.encounterIndex < ENCOUNTERS.length - 1;
+    state.message = hasNext
+      ? `Victory! ${state.enemy.name} falls. Ready for the next encounter.`
+      : 'Victory! The short encounter sequence is complete.';
+    addLog(state, `${state.enemy.name} defeated.`);
   } else if (state.player.hp <= 0) {
     state.player.hp = 0;
     state.result = 'defeat';
@@ -294,30 +375,30 @@ function render() {
   app.innerHTML = `
     <section class="hero-panel">
       <div>
-        <p class="eyebrow">Session 3 Visual Pass</p>
+        <p class="eyebrow">Session 4 Encounter Sequence</p>
         <h1>Astral Gambit</h1>
-        <p class="subtitle">Mark enemies, arm delayed gambits, and time your defenses around readable intents.</p>
+        <p class="subtitle">Fight a short escalating sequence of readable enemy archetypes.</p>
       </div>
       <div class="controls">
         <button class="secondary" data-action="debug-draw">Debug Draw</button>
         <button class="secondary" data-action="debug-energy">+1 Spark</button>
-        <button data-action="restart">Restart Encounter</button>
+        <button data-action="restart">Restart Run</button>
       </div>
     </section>
 
     <section class="battlefield">
       ${combatantTemplate('Player', state.player.hp, state.player.maxHp, state.player.block, `${state.player.energy}/${state.player.maxEnergy} spark`, 'player-card', '✦', playerStatusTemplate())}
       <div class="turn-panel">
-        <p class="eyebrow">Turn ${state.turn}</p>
+        <p class="eyebrow">Encounter ${state.encounterIndex + 1}/${ENCOUNTERS.length} · Turn ${state.turn}</p>
         <h2>${state.message}</h2>
         <div class="intent-card" aria-label="Enemy intent">
           <span class="intent-icon" aria-hidden="true">${intentIcon(intent)}</span>
           <p>Enemy intent: <strong>${intent.intent}</strong></p>
         </div>
         ${gambitTemplate()}
-        <button class="end-turn" data-action="end-turn" ${state.result ? 'disabled' : ''}>End Turn</button>
+        ${resultActionTemplate()}
       </div>
-      ${combatantTemplate(state.enemy.name, state.enemy.hp, state.enemy.maxHp, state.enemy.block, intent.intent, 'enemy-card', '🐺', enemyStatusTemplate())}
+      ${combatantTemplate(state.enemy.name, state.enemy.hp, state.enemy.maxHp, state.enemy.block, state.enemy.archetype, 'enemy-card', state.enemy.portrait, enemyStatusTemplate())}
     </section>
 
     <section class="zones">
@@ -344,6 +425,7 @@ function render() {
     state = createGame();
     render();
   });
+  app.querySelector('[data-action="next-encounter"]')?.addEventListener('click', nextEncounter);
   app.querySelector('[data-action="debug-draw"]')?.addEventListener('click', () => {
     drawCards(state, 1);
     state.message = 'Debug draw added a card to your hand.';
@@ -354,6 +436,35 @@ function render() {
     state.message = 'Debug tool added 1 spark.';
     render();
   });
+}
+
+function nextEncounter() {
+  if (state.result !== 'victory' || state.encounterIndex >= ENCOUNTERS.length - 1) return;
+  state.encounterIndex += 1;
+  state.enemy = createEnemy(ENCOUNTERS[state.encounterIndex]);
+  state.phase = 'player';
+  state.result = null;
+  state.turn = 1;
+  state.player.block = 0;
+  state.player.hp = Math.min(state.player.maxHp, state.player.hp + 18);
+  state.player.energy = state.player.maxEnergy;
+  state.player.status.marked = 0;
+  state.gambits = [];
+  state.discard.push(...state.hand.splice(0));
+  state.discard.push(...state.deck.splice(0));
+  state.deck = shuffle(state.discard.splice(0));
+  drawCards(state, 5);
+  state.message = state.enemy.intro;
+  addLog(state, `${state.enemy.name} appears. ${state.enemy.mechanics}`);
+  addLog(state, 'A brief respite restores up to 18 HP.');
+  render();
+}
+
+function resultActionTemplate() {
+  if (state.result === 'victory' && state.encounterIndex < ENCOUNTERS.length - 1) {
+    return '<button class="end-turn" data-action="next-encounter">Next Encounter</button>';
+  }
+  return `<button class="end-turn" data-action="end-turn" ${state.result ? 'disabled' : ''}>End Turn</button>`;
 }
 
 function combatantTemplate(name, hp, maxHp, block, detail, className, portrait, statusMarkup = '') {
@@ -434,6 +545,7 @@ function enemyStatusTemplate() {
     ['Marked', state.enemy.status.marked],
     ['Scorch', state.enemy.status.scorch],
     ['Strength', state.enemy.status.strength],
+    ['Wisps', state.enemy.wisps],
   ]);
 }
 

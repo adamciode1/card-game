@@ -1,6 +1,6 @@
 # Astral Gambit Prototype
 
-A small browser-based card game prototype currently focused on Session 2 of the development plan. The build keeps the Session 1 playable loop intact while adding a more tactical combat rhythm: readable enemy intentions, spark management, block timing, status effects, and a distinctive delayed **gambit** mechanic.
+A small browser-based card game prototype currently focused on Session 4 of the development plan. The build keeps the earlier playable combat loop intact while adding a short escalating encounter sequence with distinct enemy archetypes, readable intentions, and simple tuning knobs for enemy health and patterns.
 
 ## Run locally
 
@@ -15,8 +15,9 @@ Open the local Vite URL shown in the terminal.
 
 - Click cards in your hand to play them.
 - Click **End Turn** to discard your hand and let the enemy act.
+- After a victory, click **Next Encounter** to continue the current sequence.
 - Use **Debug Draw** and **+1 Spark** to quickly test card draw and energy states.
-- Click **Restart Encounter** after victory, defeat, or whenever you want a fresh run.
+- Click **Restart Run** after victory, defeat, or whenever you want a fresh sequence.
 
 ## Current mechanics
 
@@ -24,5 +25,13 @@ Open the local Vite URL shown in the terminal.
 - **Block** prevents incoming attack damage and clears at the start of your next turn.
 - **Marked** is consumed by the next attack for bonus damage.
 - **Scorch** damages the enemy at the start of your turn.
-- **Strength** increases the Ember Wolf's future attack damage.
+- **Strength** increases enemy attack damage.
 - **Gambits** are delayed plays that arm now and resolve at the start of your next turn.
+- **Wisps** are summoned enemy helpers that add chip damage to specific Hollow Oracle attacks.
+
+## Current encounter sequence
+
+1. **Ember Wolf** — attacker/disruptor that marks the player before heavy bites.
+2. **Aegis Moth** — defender that alternates large block turns with modest attacks and scorch cleansing.
+3. **Hollow Oracle** — summoner/scaler that adds wisps and turns them into extra damage.
+4. **Solar Tyrant** — compact boss-pattern enemy with a readable setup, shield, and burst cycle.
