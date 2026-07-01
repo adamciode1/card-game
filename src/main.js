@@ -87,6 +87,77 @@ const CARD_LIBRARY = [
   },
 ];
 
+
+const REWARD_CARDS = [
+  {
+    id: 'meteor-lance',
+    name: 'Meteor Lance',
+    cost: 2,
+    type: 'Attack',
+    text: 'Deal 16 damage. If a gambit is pending, apply 1 marked first.',
+    rewardText: 'Burst payoff for decks that arm gambits before attacking.',
+    play(state) {
+      if (state.gambits.length > 0) {
+        state.enemy.status.marked += 1;
+        addLog(state, 'Meteor Lance spots an opening from your pending gambit.');
+      }
+      const bonus = consumeMarkedBonus(state);
+      dealDamage(state, 16 + bonus);
+    },
+  },
+  {
+    id: 'starlit-reprieve',
+    name: 'Starlit Reprieve',
+    cost: 1,
+    type: 'Skill',
+    text: 'Gain 6 block. Heal 3 HP if you have no marked status.',
+    rewardText: 'Safer sustain for longer encounter chains.',
+    play(state) {
+      gainBlock(state, 6, 'Starlit Reprieve folds light into 6 block.');
+      if (state.player.status.marked === 0) {
+        state.player.hp = Math.min(state.player.maxHp, state.player.hp + 3);
+        addLog(state, 'Clean starlight restores 3 HP.');
+      }
+    },
+  },
+  {
+    id: 'ember-investment',
+    name: 'Ember Investment',
+    cost: 1,
+    type: 'Gambit',
+    text: 'Arm a gambit: next turn, gain 2 spark and draw 1 card.',
+    rewardText: 'A tempo reward for players who plan one turn ahead.',
+    play(state) {
+      armGambit(state, {
+        name: 'Ember Investment',
+        turns: 1,
+        description: '+2 spark + 1 draw',
+        resolve(targetState) {
+          targetState.player.energy += 2;
+          drawCards(targetState, 1);
+          addLog(targetState, 'Ember Investment pays out 2 spark and 1 card.');
+        },
+      });
+    },
+  },
+  {
+    id: 'void-suture',
+    name: 'Void Suture',
+    cost: 0,
+    type: 'Hex',
+    text: 'Apply 1 marked. If the enemy has scorch, draw 1 card.',
+    rewardText: 'Links mark and scorch into a faster combo package.',
+    play(state) {
+      state.enemy.status.marked += 1;
+      addLog(state, 'Void Suture pins a marked seam in the enemy.');
+      if (state.enemy.status.scorch > 0) {
+        drawCards(state, 1);
+        addLog(state, 'Scorch lights the seam and draws 1 card.');
+      }
+    },
+  },
+];
+
 const ENCOUNTERS = [
   {
     id: 'ember-wolf',
@@ -156,7 +227,7 @@ render();
 
 function createGame() {
   const deck = CARD_LIBRARY.flatMap((card) =>
-    Array.from({ length: card.copies }, (_, copy) => ({ ...card, instanceId: `${card.id}-${copy}-${crypto.randomUUID()}` })),
+    Array.from({ length: card.copies }, () => createCardInstance(card)),
   );
 
   const initialState = {
@@ -173,6 +244,8 @@ function createGame() {
     log: [],
     message: ENCOUNTERS[0].intro,
     result: null,
+    rewardOptions: [],
+    rewardsClaimed: [],
   };
 
   drawCards(initialState, 5);
@@ -344,8 +417,12 @@ function checkResult(state) {
     state.enemy.hp = 0;
     state.result = 'victory';
     const hasNext = state.encounterIndex < ENCOUNTERS.length - 1;
+    if (hasNext && state.rewardOptions.length === 0) {
+      state.phase = 'reward';
+      state.rewardOptions = rollRewardOptions(state);
+    }
     state.message = hasNext
-      ? `Victory! ${state.enemy.name} falls. Ready for the next encounter.`
+      ? `Victory! Choose one reward before the next encounter.`
       : 'Victory! The short encounter sequence is complete.';
     addLog(state, `${state.enemy.name} defeated.`);
   } else if (state.player.hp <= 0) {
@@ -370,14 +447,26 @@ function shuffle(cards) {
   return shuffled;
 }
 
+
+function createCardInstance(card) {
+  return { ...card, instanceId: `${card.id}-${crypto.randomUUID()}` };
+}
+
+function rollRewardOptions(state) {
+  const ownedRewardIds = new Set(state.rewardsClaimed.map((card) => card.id));
+  const freshRewards = REWARD_CARDS.filter((card) => !ownedRewardIds.has(card.id));
+  const rewardPool = freshRewards.length >= 3 ? freshRewards : REWARD_CARDS;
+  return shuffle(rewardPool).slice(0, 3);
+}
+
 function render() {
   const intent = currentIntent(state);
   app.innerHTML = `
     <section class="hero-panel">
       <div>
-        <p class="eyebrow">Session 4 Encounter Sequence</p>
+        <p class="eyebrow">Session 5 Progression & Rewards</p>
         <h1>Astral Gambit</h1>
-        <p class="subtitle">Fight a short escalating sequence of readable enemy archetypes.</p>
+        <p class="subtitle">Win encounters, choose rewards, and shape your deck during the run.</p>
       </div>
       <div class="controls">
         <button class="secondary" data-action="debug-draw">Debug Draw</button>
@@ -396,6 +485,8 @@ function render() {
           <p>Enemy intent: <strong>${intent.intent}</strong></p>
         </div>
         ${gambitTemplate()}
+        ${progressionTemplate()}
+        ${rewardTemplate()}
         ${resultActionTemplate()}
       </div>
       ${combatantTemplate(state.enemy.name, state.enemy.hp, state.enemy.maxHp, state.enemy.block, state.enemy.archetype, 'enemy-card', state.enemy.portrait, enemyStatusTemplate())}
@@ -426,6 +517,9 @@ function render() {
     render();
   });
   app.querySelector('[data-action="next-encounter"]')?.addEventListener('click', nextEncounter);
+  app.querySelectorAll('[data-reward-id]').forEach((button) => {
+    button.addEventListener('click', () => chooseReward(button.dataset.rewardId));
+  });
   app.querySelector('[data-action="debug-draw"]')?.addEventListener('click', () => {
     drawCards(state, 1);
     state.message = 'Debug draw added a card to your hand.';
@@ -444,6 +538,7 @@ function nextEncounter() {
   state.enemy = createEnemy(ENCOUNTERS[state.encounterIndex]);
   state.phase = 'player';
   state.result = null;
+  state.rewardOptions = [];
   state.turn = 1;
   state.player.block = 0;
   state.player.hp = Math.min(state.player.maxHp, state.player.hp + 18);
@@ -460,9 +555,54 @@ function nextEncounter() {
   render();
 }
 
+
+function chooseReward(cardId) {
+  if (state.result !== 'victory' || state.rewardOptions.length === 0) return;
+  const reward = state.rewardOptions.find((card) => card.id === cardId);
+  if (!reward) return;
+  state.discard.push(createCardInstance(reward));
+  state.rewardsClaimed.push(reward);
+  state.rewardOptions = [];
+  state.message = `${reward.name} added to your discard pile. Continue when ready.`;
+  addLog(state, `Reward claimed: ${reward.name}.`);
+  render();
+}
+
+function progressionTemplate() {
+  const claimed = state.rewardsClaimed.map((card) => card.name).join(' · ') || 'No rewards claimed yet';
+  return `<p class="progression-chip">Run rewards: ${claimed}</p>`;
+}
+
+function rewardTemplate() {
+  if (state.rewardOptions.length === 0) return '';
+  return `
+    <div class="reward-panel" aria-label="Card rewards">
+      <p class="eyebrow">Choose one card reward</p>
+      <div class="reward-grid">
+        ${state.rewardOptions.map(rewardCardTemplate).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function rewardCardTemplate(card) {
+  return `
+    <button class="reward-card" data-reward-id="${card.id}" data-type="${card.type}">
+      <span class="card-topline">
+        <span class="cost">${card.cost}</span>
+        <span class="type">${card.type}</span>
+      </span>
+      <strong>${card.name}</strong>
+      <p>${card.text}</p>
+      <small>${card.rewardText}</small>
+    </button>
+  `;
+}
+
 function resultActionTemplate() {
   if (state.result === 'victory' && state.encounterIndex < ENCOUNTERS.length - 1) {
-    return '<button class="end-turn" data-action="next-encounter">Next Encounter</button>';
+    const disabled = state.rewardOptions.length > 0 ? 'disabled' : '';
+    return `<button class="end-turn" data-action="next-encounter" ${disabled}>Next Encounter</button>`;
   }
   return `<button class="end-turn" data-action="end-turn" ${state.result ? 'disabled' : ''}>End Turn</button>`;
 }
