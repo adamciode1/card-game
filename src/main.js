@@ -354,9 +354,16 @@ const RUN_MAP = [
 ];
 
 const ENCOUNTER_BY_ID = Object.fromEntries(ENCOUNTERS.map((encounter) => [encounter.id, encounter]));
+const DEFAULT_SETTINGS = {
+  animationSpeed: 1,
+  textScale: 1,
+  volume: 70,
+};
+const SETTINGS_STORAGE_KEY = 'astral-gambit-settings';
 
 const app = document.querySelector('#app');
 let state = createGame();
+window.addEventListener('keydown', handleKeyboardShortcuts);
 render();
 
 function createGame() {
@@ -382,6 +389,8 @@ function createGame() {
     result: null,
     rewardOptions: [],
     rewardsClaimed: [],
+    settings: loadSettings(),
+    settingsOpen: false,
   };
 
   drawCards(initialState, 5);
@@ -419,6 +428,11 @@ function playCard(instanceId) {
   state.discard.push(card);
   checkResult(state);
   render();
+}
+
+function playHandIndex(index) {
+  const card = state.hand[index];
+  if (card) playCard(card.instanceId);
 }
 
 function endTurn() {
@@ -598,19 +612,23 @@ function rollRewardOptions(state) {
 
 function render() {
   const intent = currentIntent(state);
+  applySettings();
   app.innerHTML = `
     <section class="hero-panel">
       <div>
-        <p class="eyebrow">Session 7 Mini-Run Map</p>
+        <p class="eyebrow">Session 8 Polish + Usability</p>
         <h1>Astral Gambit</h1>
-        <p class="subtitle">Choose a compact route of fights, rests, upgrades, events, and a boss.</p>
+        <p class="subtitle">A readable mini-run card battler with quick controls, tooltips, and comfort settings.</p>
       </div>
       <div class="controls">
-        <button class="secondary" data-action="debug-draw">Debug Draw</button>
-        <button class="secondary" data-action="debug-energy">+1 Spark</button>
+        <button class="secondary" data-action="toggle-settings" aria-expanded="${state.settingsOpen}">Settings</button>
+        <button class="secondary" data-action="debug-draw" title="Debug tool: draw 1 card. Keyboard: D">Debug Draw</button>
+        <button class="secondary" data-action="debug-energy" title="Debug tool: gain 1 spark. Keyboard: S">+1 Spark</button>
         <button data-action="restart">Restart Run</button>
       </div>
     </section>
+
+    ${settingsTemplate()}
 
     <section class="battlefield">
       ${combatantTemplate('Player', state.player.hp, state.player.maxHp, state.player.block, `${state.player.energy}/${state.player.maxEnergy} spark`, 'player-card', '✦', playerStatusTemplate())}
@@ -633,9 +651,19 @@ function render() {
       ${zoneTemplate('Exhaust', state.exhaust.length)}
     </section>
 
+    <section class="shortcut-strip" aria-label="Keyboard shortcuts">
+      <span>1-5 play cards</span>
+      <span>Space end turn</span>
+      <span>M open map</span>
+      <span>D draw</span>
+      <span>S spark</span>
+    </section>
+
     <section class="hand" aria-label="Player hand">
       ${state.hand.map(cardTemplate).join('') || '<p class="empty-hand">No cards in hand.</p>'}
     </section>
+
+    ${glossaryTemplate()}
 
     <section class="log-panel">
       <h2>Combat Log</h2>
@@ -650,6 +678,14 @@ function render() {
   app.querySelector('[data-action="restart"]')?.addEventListener('click', () => {
     state = createGame();
     render();
+  });
+  app.querySelector('[data-action="toggle-settings"]')?.addEventListener('click', () => {
+    state.settingsOpen = !state.settingsOpen;
+    render();
+  });
+  app.querySelector('[data-action="toggle-fullscreen"]')?.addEventListener('click', toggleFullscreen);
+  app.querySelectorAll('[data-setting]').forEach((input) => {
+    input.addEventListener('input', () => updateSetting(input.dataset.setting, Number(input.value)));
   });
   app.querySelector('[data-action="open-map"]')?.addEventListener('click', openMap);
   app.querySelectorAll('[data-node-id]').forEach((button) => {
@@ -668,6 +704,80 @@ function render() {
     state.message = 'Debug tool added 1 spark.';
     render();
   });
+}
+
+function loadSettings() {
+  const stored = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || 'null');
+  return { ...DEFAULT_SETTINGS, ...(stored ?? {}) };
+}
+
+function saveSettings() {
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state.settings));
+}
+
+function updateSetting(key, value) {
+  state.settings[key] = value;
+  saveSettings();
+  applySettings();
+}
+
+function applySettings() {
+  document.documentElement.style.setProperty('--motion-scale', state.settings.animationSpeed);
+  document.documentElement.style.setProperty('--text-scale', state.settings.textScale);
+  document.body.classList.toggle('large-text', state.settings.textScale > 1);
+}
+
+function toggleFullscreen() {
+  if (document.fullscreenElement) {
+    document.exitFullscreen();
+  } else {
+    document.documentElement.requestFullscreen();
+  }
+}
+
+function handleKeyboardShortcuts(event) {
+  if (event.target instanceof HTMLInputElement) return;
+  if (event.key >= '1' && event.key <= '5') {
+    playHandIndex(Number(event.key) - 1);
+  } else if (event.code === 'Space') {
+    event.preventDefault();
+    endTurn();
+  } else if (event.key.toLowerCase() === 'm') {
+    openMap();
+  } else if (event.key.toLowerCase() === 'd') {
+    drawCards(state, 1);
+    state.message = 'Debug draw added a card to your hand.';
+    render();
+  } else if (event.key.toLowerCase() === 's') {
+    state.player.energy += 1;
+    state.message = 'Debug tool added 1 spark.';
+    render();
+  }
+}
+
+function settingsTemplate() {
+  if (!state.settingsOpen) return '';
+  return `
+    <section class="settings-panel" aria-label="Settings">
+      <div>
+        <p class="eyebrow">Comfort settings</p>
+        <h2>Fast PC-friendly adjustments</h2>
+      </div>
+      <label>Animation speed
+        <input type="range" min="0.5" max="1.5" step="0.25" value="${state.settings.animationSpeed}" data-setting="animationSpeed">
+        <strong>${state.settings.animationSpeed}x</strong>
+      </label>
+      <label>Text readability
+        <input type="range" min="1" max="1.2" step="0.1" value="${state.settings.textScale}" data-setting="textScale">
+        <strong>${Math.round(state.settings.textScale * 100)}%</strong>
+      </label>
+      <label>Volume
+        <input type="range" min="0" max="100" step="5" value="${state.settings.volume}" data-setting="volume">
+        <strong>${state.settings.volume}%</strong>
+      </label>
+      <button class="end-turn" data-action="toggle-fullscreen">Toggle Fullscreen</button>
+    </section>
+  `;
 }
 
 function openMap() {
@@ -898,18 +1008,34 @@ function zoneTemplate(label, count) {
 
 function cardTemplate(card) {
   const disabled = state.result || card.cost > state.player.energy;
+  const preview = card.type === 'Attack' ? attackPreview(card) : '';
   return `
-    <button class="card" data-card-id="${card.instanceId}" data-type="${card.type}" ${disabled ? 'disabled' : ''}>
+    <button class="card" data-card-id="${card.instanceId}" data-type="${card.type}" title="${cardTooltip(card)}" ${disabled ? 'disabled' : ''}>
       <span class="card-topline">
         <span class="cost">${card.cost}</span>
         <span class="type">${card.type}</span>
       </span>
+      ${preview}
       <span class="archetype">${card.archetype}</span>
       <span class="card-art" aria-hidden="true">${cardGlyph(card.type)}</span>
       <strong>${card.name}</strong>
       <p>${card.text}</p>
     </button>
   `;
+}
+
+function attackPreview(card) {
+  const match = card.text.match(/Deal (\d+) damage/);
+  if (!match) return '';
+  const baseDamage = Number(match[1]);
+  const markedBonus = state.enemy.status.marked > 0 ? 4 : 0;
+  const blocked = Math.min(state.enemy.block, baseDamage + markedBonus);
+  const damage = baseDamage + markedBonus - blocked;
+  return `<span class="preview-chip">Preview: ${damage} HP damage${markedBonus ? ' after Marked' : ''}</span>`;
+}
+
+function cardTooltip(card) {
+  return `${card.name}: ${card.text} Cost: ${card.cost} spark. Press number keys 1-5 to play cards from left to right.`;
 }
 
 
@@ -956,5 +1082,30 @@ function playerStatusTemplate() {
 function statusListTemplate(entries) {
   const activeEntries = entries.filter(([, value]) => value > 0);
   if (activeEntries.length === 0) return '<p class="status-empty">No statuses</p>';
-  return `<div class="status-list">${activeEntries.map(([label, value]) => `<span>${label} ${value}</span>`).join('')}</div>`;
+  return `<div class="status-list">${activeEntries.map(([label, value]) => `<span title="${statusTooltip(label)}">${label} ${value}</span>`).join('')}</div>`;
+}
+
+function statusTooltip(label) {
+  const tooltips = {
+    Marked: 'Consumed by the next attack for bonus damage.',
+    Scorch: 'Damages the enemy at the start of your turn.',
+    Strength: 'Adds damage to enemy attacks.',
+    Wisps: 'Enemy helpers that add chip damage to some Oracle attacks.',
+  };
+  return tooltips[label] ?? 'Temporary combat effect.';
+}
+
+function glossaryTemplate() {
+  return `
+    <section class="glossary-panel" aria-label="Combat glossary">
+      <h2>Quick Glossary</h2>
+      <div>
+        <span title="Your card-playing resource for the turn.">Spark</span>
+        <span title="Prevents attack damage, then clears at the start of your next turn.">Block</span>
+        <span title="Consumed by the next attack for +4 damage against enemies, or +3 damage against you.">Marked</span>
+        <span title="Damages the enemy at the start of your turn.">Scorch</span>
+        <span title="Delayed plays that resolve at the start of your next turn.">Gambit</span>
+      </div>
+    </section>
+  `;
 }
