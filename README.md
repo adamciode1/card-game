@@ -1,6 +1,6 @@
 # Astral Gambit Prototype
 
-A small browser-based card game prototype currently focused on Session 8 of the development plan. The build keeps the playable combat loop, archetype card rewards, and boss encounter intact while adding lightweight polish for accessibility, usability, and faster PC play.
+A small browser-based card game prototype currently focused on Session 9 of the development plan. The build keeps the playable mini-run intact while adding lightweight balance targets and playtest tracking before any more systems are added.
 
 ## Run locally
 
@@ -45,6 +45,12 @@ Open the local Vite URL shown in the terminal.
 - The run panel tracks claimed rewards, chosen archetypes, and the route history so deck direction remains visible between nodes.
 - The mini-run map starts with an opening fight, then offers a safe combat or elite combat branch, one utility choice, and a final boss.
 - Utility nodes stay lightweight: rest heals HP, upgrade grants +1 max spark, and event adds a random reward card.
+
+## Current balance and playtesting
+
+- A lightweight `BALANCE_LOG.md` records balance targets, playtest observations, and the next repeated-run checklist.
+- The in-game balance panel keeps target outcomes visible while testing the current route.
+- Session 9 intentionally avoids adding more keywords, encounters, or large systems until repeated runs identify clear tuning needs.
 
 ## Current polish, accessibility, and usability
 
