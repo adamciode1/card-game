@@ -75,7 +75,8 @@ button:disabled {
 .turn-panel,
 .settings-panel,
 .shortcut-strip,
-.glossary-panel {
+.glossary-panel,
+.balance-panel {
   border: 1px solid var(--line);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(18px);
@@ -430,6 +431,28 @@ h1 {
   padding: 1rem 1.2rem;
 }
 
+.balance-panel {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.5fr) 1fr;
+  gap: 1rem;
+  align-items: start;
+  padding: 1rem 1.2rem;
+  border-radius: 22px;
+  background: rgba(15, 13, 32, 0.68);
+}
+
+.balance-panel h2 { font-size: 1.15rem; }
+
+.balance-panel ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #d8d1e9;
+}
+
+.balance-panel li::marker { color: var(--gold); }
+
 .glossary-panel div {
   display: flex;
   flex-wrap: wrap;
@@ -544,7 +567,8 @@ h1 {
   body { min-width: 0; }
   .hero-panel,
   .battlefield,
-  .settings-panel { grid-template-columns: 1fr; flex-direction: column; align-items: stretch; }
+  .settings-panel,
+  .balance-panel { grid-template-columns: 1fr; flex-direction: column; align-items: stretch; }
   .hand,
   .reward-grid { grid-template-columns: repeat(2, minmax(11rem, 1fr)); }
 }

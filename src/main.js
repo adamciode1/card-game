@@ -335,6 +335,12 @@ const ENCOUNTERS = [
 ];
 
 
+const BALANCE_NOTES = [
+  'Target: opening fight should end around turns 3-5 with 36+ HP for most clean wins.',
+  'Target: safe route should preserve more HP; elite route may cost HP but grants a fourth reward choice.',
+  'Watch: boss losses should come from missed block/setup windows, not hidden damage spikes.',
+];
+
 const RUN_MAP = [
   [
     { id: 'ember-trail', type: 'combat', label: 'Opening Fight', detail: 'A fair first battle to start the route.', encounterId: 'ember-wolf' },
@@ -616,9 +622,9 @@ function render() {
   app.innerHTML = `
     <section class="hero-panel">
       <div>
-        <p class="eyebrow">Session 8 Polish + Usability</p>
+        <p class="eyebrow">Session 9 Balance + Playtesting</p>
         <h1>Astral Gambit</h1>
-        <p class="subtitle">A readable mini-run card battler with quick controls, tooltips, and comfort settings.</p>
+        <p class="subtitle">A readable mini-run card battler with lightweight balance targets, playtest notes, and clear choices.</p>
       </div>
       <div class="controls">
         <button class="secondary" data-action="toggle-settings" aria-expanded="${state.settingsOpen}">Settings</button>
@@ -664,6 +670,8 @@ function render() {
     </section>
 
     ${glossaryTemplate()}
+
+    ${balanceNotesTemplate()}
 
     <section class="log-panel">
       <h2>Combat Log</h2>
@@ -1093,6 +1101,18 @@ function statusTooltip(label) {
     Wisps: 'Enemy helpers that add chip damage to some Oracle attacks.',
   };
   return tooltips[label] ?? 'Temporary combat effect.';
+}
+
+function balanceNotesTemplate() {
+  return `
+    <section class="balance-panel" aria-label="Balance playtest notes">
+      <div>
+        <p class="eyebrow">Balance pass</p>
+        <h2>Current playtest targets</h2>
+      </div>
+      <ul>${BALANCE_NOTES.map((note) => `<li>${note}</li>`).join('')}</ul>
+    </section>
+  `;
 }
 
 function glossaryTemplate() {
