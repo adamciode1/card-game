@@ -1,6 +1,6 @@
 # Astral Gambit Prototype
 
-A small browser-based card game prototype currently focused on Session 4 of the development plan. The build keeps the earlier playable combat loop intact while adding a short escalating encounter sequence with distinct enemy archetypes, readable intentions, and simple tuning knobs for enemy health and patterns.
+A small browser-based card game prototype currently focused on Session 5 of the development plan. The build keeps the earlier playable combat loop and escalating encounter sequence intact while adding post-encounter card rewards that let players shape their deck during the run.
 
 ## Run locally
 
@@ -15,7 +15,7 @@ Open the local Vite URL shown in the terminal.
 
 - Click cards in your hand to play them.
 - Click **End Turn** to discard your hand and let the enemy act.
-- After a victory, click **Next Encounter** to continue the current sequence.
+- After a victory, choose one of three card rewards, then click **Next Encounter** to continue the current sequence.
 - Use **Debug Draw** and **+1 Spark** to quickly test card draw and energy states.
 - Click **Restart Run** after victory, defeat, or whenever you want a fresh sequence.
 
@@ -28,6 +28,12 @@ Open the local Vite URL shown in the terminal.
 - **Strength** increases enemy attack damage.
 - **Gambits** are delayed plays that arm now and resolve at the start of your next turn.
 - **Wisps** are summoned enemy helpers that add chip damage to specific Hollow Oracle attacks.
+
+## Current progression
+
+- Non-final victories offer three card rewards. Pick one to add it to your discard pile for the rest of the run.
+- Reward cards support different strategic directions: gambit payoff, sustain, tempo setup, and mark/scorch combos.
+- The run panel tracks claimed rewards so deck changes are visible between encounters.
 
 ## Current encounter sequence
 
