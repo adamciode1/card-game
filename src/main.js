@@ -7,6 +7,8 @@ const CARD_LIBRARY = [
     cost: 1,
     type: 'Attack',
     text: 'Deal 6 damage. If the enemy is marked, deal +4 damage.',
+    archetype: 'Starblade',
+    rarity: 'Starter',
     copies: 3,
     play(state) {
       const bonus = consumeMarkedBonus(state);
@@ -19,6 +21,8 @@ const CARD_LIBRARY = [
     cost: 1,
     type: 'Skill',
     text: 'Gain 7 block. Gain 2 more block if a gambit is pending.',
+    archetype: 'Lunar Guard',
+    rarity: 'Starter',
     copies: 3,
     play(state) {
       const gambitBonus = state.gambits.length > 0 ? 2 : 0;
@@ -31,6 +35,8 @@ const CARD_LIBRARY = [
     cost: 0,
     type: 'Tactic',
     text: 'Draw 1 card. Gain 1 spark.',
+    archetype: 'Comet Tempo',
+    rarity: 'Starter',
     copies: 2,
     play(state) {
       drawCards(state, 1);
@@ -44,6 +50,8 @@ const CARD_LIBRARY = [
     cost: 1,
     type: 'Hex',
     text: 'Apply 1 marked. The next attack against a marked enemy deals +4 damage.',
+    archetype: 'Void Hex',
+    rarity: 'Starter',
     copies: 2,
     play(state) {
       state.enemy.status.marked += 1;
@@ -56,6 +64,8 @@ const CARD_LIBRARY = [
     cost: 1,
     type: 'Gambit',
     text: 'Arm a gambit: at the start of your next turn, deal 12 damage and gain 1 spark.',
+    archetype: 'Eclipse Gambit',
+    rarity: 'Starter',
     copies: 2,
     play(state) {
       armGambit(state, {
@@ -77,6 +87,8 @@ const CARD_LIBRARY = [
     cost: 2,
     type: 'Attack',
     text: 'Deal 12 damage. Apply 2 scorch.',
+    archetype: 'Solar Flare',
+    rarity: 'Starter',
     copies: 1,
     play(state) {
       const bonus = consumeMarkedBonus(state);
@@ -94,8 +106,10 @@ const REWARD_CARDS = [
     name: 'Meteor Lance',
     cost: 2,
     type: 'Attack',
+    archetype: 'Starblade',
+    rarity: 'Uncommon',
     text: 'Deal 16 damage. If a gambit is pending, apply 1 marked first.',
-    rewardText: 'Burst payoff for decks that arm gambits before attacking.',
+    rewardText: 'Starblade burst that rewards setting up a delayed strike.',
     play(state) {
       if (state.gambits.length > 0) {
         state.enemy.status.marked += 1;
@@ -106,12 +120,33 @@ const REWARD_CARDS = [
     },
   },
   {
+    id: 'constellation-cut',
+    name: 'Constellation Cut',
+    cost: 1,
+    type: 'Attack',
+    archetype: 'Starblade',
+    rarity: 'Common',
+    text: 'Deal 7 damage. Draw 1 card if this consumes marked.',
+    rewardText: 'Keeps Starblade mark turns moving without adding complexity.',
+    play(state) {
+      const hadMark = state.enemy.status.marked > 0;
+      const bonus = consumeMarkedBonus(state);
+      dealDamage(state, 7 + bonus);
+      if (hadMark) {
+        drawCards(state, 1);
+        addLog(state, 'Constellation Cut follows the marked line into 1 draw.');
+      }
+    },
+  },
+  {
     id: 'starlit-reprieve',
     name: 'Starlit Reprieve',
     cost: 1,
     type: 'Skill',
+    archetype: 'Lunar Guard',
+    rarity: 'Common',
     text: 'Gain 6 block. Heal 3 HP if you have no marked status.',
-    rewardText: 'Safer sustain for longer encounter chains.',
+    rewardText: 'Lunar Guard sustain for longer encounter chains.',
     play(state) {
       gainBlock(state, 6, 'Starlit Reprieve folds light into 6 block.');
       if (state.player.status.marked === 0) {
@@ -121,10 +156,29 @@ const REWARD_CARDS = [
     },
   },
   {
+    id: 'mirror-aegis',
+    name: 'Mirror Aegis',
+    cost: 2,
+    type: 'Skill',
+    archetype: 'Lunar Guard',
+    rarity: 'Uncommon',
+    text: 'Gain 12 block. If the enemy is marked, gain 1 spark.',
+    rewardText: 'A defensive bridge between guard and mark strategies.',
+    play(state) {
+      gainBlock(state, 12, 'Mirror Aegis forms a bright 12 block shell.');
+      if (state.enemy.status.marked > 0) {
+        state.player.energy += 1;
+        addLog(state, 'The marked reflection returns 1 spark.');
+      }
+    },
+  },
+  {
     id: 'ember-investment',
     name: 'Ember Investment',
     cost: 1,
     type: 'Gambit',
+    archetype: 'Eclipse Gambit',
+    rarity: 'Common',
     text: 'Arm a gambit: next turn, gain 2 spark and draw 1 card.',
     rewardText: 'A tempo reward for players who plan one turn ahead.',
     play(state) {
@@ -141,10 +195,34 @@ const REWARD_CARDS = [
     },
   },
   {
+    id: 'eclipse-repeat',
+    name: 'Eclipse Repeat',
+    cost: 1,
+    type: 'Gambit',
+    archetype: 'Eclipse Gambit',
+    rarity: 'Rare',
+    text: 'Arm a gambit: next turn, deal 8 damage twice.',
+    rewardText: 'A rare gambit payoff that is exciting but readable.',
+    play(state) {
+      armGambit(state, {
+        name: 'Eclipse Repeat',
+        turns: 1,
+        description: '8 damage twice',
+        resolve(targetState) {
+          addLog(targetState, 'Eclipse Repeat echoes through the enemy.');
+          dealDamage(targetState, 8);
+          dealDamage(targetState, 8);
+        },
+      });
+    },
+  },
+  {
     id: 'void-suture',
     name: 'Void Suture',
     cost: 0,
     type: 'Hex',
+    archetype: 'Void Hex',
+    rarity: 'Common',
     text: 'Apply 1 marked. If the enemy has scorch, draw 1 card.',
     rewardText: 'Links mark and scorch into a faster combo package.',
     play(state) {
@@ -154,6 +232,41 @@ const REWARD_CARDS = [
         drawCards(state, 1);
         addLog(state, 'Scorch lights the seam and draws 1 card.');
       }
+    },
+  },
+  {
+    id: 'solar-kindling',
+    name: 'Solar Kindling',
+    cost: 1,
+    type: 'Tactic',
+    archetype: 'Solar Flare',
+    rarity: 'Uncommon',
+    text: 'Apply 2 scorch. If a gambit is pending, draw 1 card.',
+    rewardText: 'Cross-archetype fuel for scorch and gambit hybrids.',
+    play(state) {
+      state.enemy.status.scorch += 2;
+      addLog(state, `${state.enemy.name} is kindled with 2 scorch.`);
+      if (state.gambits.length > 0) {
+        drawCards(state, 1);
+        addLog(state, 'The pending gambit turns kindling into 1 draw.');
+      }
+    },
+  },
+  {
+    id: 'supernova-vow',
+    name: 'Supernova Vow',
+    cost: 3,
+    type: 'Attack',
+    archetype: 'Solar Flare',
+    rarity: 'Rare',
+    text: 'Deal 20 damage. Apply 3 scorch. Take 3 damage.',
+    rewardText: 'A rare risk/reward finisher for aggressive Solar Flare decks.',
+    play(state) {
+      const bonus = consumeMarkedBonus(state);
+      dealDamage(state, 20 + bonus);
+      state.enemy.status.scorch += 3;
+      takeDamage(state, 3);
+      addLog(state, 'Supernova Vow burns bright: 3 enemy scorch and 3 recoil damage.');
     },
   },
 ];
@@ -287,7 +400,7 @@ function playCard(instanceId) {
 function endTurn() {
   if (state.result || state.phase !== 'player') return;
   state.phase = 'enemy';
-  state.message = 'The Ember Wolf acts.';
+  state.message = `${state.enemy.name} acts.`;
   state.discard.push(...state.hand.splice(0));
   runEnemyTurn();
   checkResult(state);
@@ -464,9 +577,9 @@ function render() {
   app.innerHTML = `
     <section class="hero-panel">
       <div>
-        <p class="eyebrow">Session 5 Progression & Rewards</p>
+        <p class="eyebrow">Session 6 Archetype Expansion</p>
         <h1>Astral Gambit</h1>
-        <p class="subtitle">Win encounters, choose rewards, and shape your deck during the run.</p>
+        <p class="subtitle">Build toward Starblade, Lunar Guard, Eclipse Gambit, Void Hex, or Solar Flare synergies.</p>
       </div>
       <div class="controls">
         <button class="secondary" data-action="debug-draw">Debug Draw</button>
@@ -570,7 +683,24 @@ function chooseReward(cardId) {
 
 function progressionTemplate() {
   const claimed = state.rewardsClaimed.map((card) => card.name).join(' · ') || 'No rewards claimed yet';
-  return `<p class="progression-chip">Run rewards: ${claimed}</p>`;
+  const archetypes = archetypeSummary(state.rewardsClaimed);
+  return `
+    <div class="progression-chip">
+      <span>Run rewards: ${claimed}</span>
+      <span>Archetypes: ${archetypes}</span>
+    </div>
+  `;
+}
+
+function archetypeSummary(cards) {
+  if (cards.length === 0) return 'Choose rewards to define your strategy';
+  const counts = cards.reduce((summary, card) => {
+    summary[card.archetype] = (summary[card.archetype] ?? 0) + 1;
+    return summary;
+  }, {});
+  return Object.entries(counts)
+    .map(([archetype, count]) => `${archetype} ${count}`)
+    .join(' · ');
 }
 
 function rewardTemplate() {
@@ -590,8 +720,9 @@ function rewardCardTemplate(card) {
     <button class="reward-card" data-reward-id="${card.id}" data-type="${card.type}">
       <span class="card-topline">
         <span class="cost">${card.cost}</span>
-        <span class="type">${card.type}</span>
+        <span class="type">${card.rarity} ${card.type}</span>
       </span>
+      <span class="archetype">${card.archetype}</span>
       <strong>${card.name}</strong>
       <p>${card.text}</p>
       <small>${card.rewardText}</small>
@@ -645,6 +776,7 @@ function cardTemplate(card) {
         <span class="cost">${card.cost}</span>
         <span class="type">${card.type}</span>
       </span>
+      <span class="archetype">${card.archetype}</span>
       <span class="card-art" aria-hidden="true">${cardGlyph(card.type)}</span>
       <strong>${card.name}</strong>
       <p>${card.text}</p>
